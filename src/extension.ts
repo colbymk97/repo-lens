@@ -41,9 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const providerRegistry = new EmbeddingProviderRegistry(context.secrets);
 
   // Storage
-  // TODO: resolve sqlite-vec extension path from node_modules
-  const vecExtensionPath = '';
-  const db = openDatabase(context.globalStorageUri.fsPath, vecExtensionPath);
+  const db = openDatabase({ storagePath: context.globalStorageUri.fsPath });
   const chunkStore = new ChunkStore(db);
   const embeddingStore = new EmbeddingStore(db);
   const syncStore = new SyncStore(db);

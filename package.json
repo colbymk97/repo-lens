@@ -122,20 +122,23 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "lint": "eslint src/",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "package": "vsce package"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
+    "minimatch": "^10.0.1",
     "sqlite-vec": "^0.1.6",
-    "tiktoken": "^1.0.18",
-    "minimatch": "^10.0.1"
+    "tiktoken": "^1.0.18"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.99.0",
-    "typescript": "^5.7.0",
+    "@vscode/vsce": "^3.0.0",
     "eslint": "^9.0.0",
-    "@vscode/vsce": "^3.0.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
   }
 }

@@ -16,6 +16,7 @@ export class ChunkStore {
   private readonly deleteByFileStmt: Database.Statement;
   private readonly getByIdStmt: Database.Statement;
   private readonly getByDataSourceStmt: Database.Statement;
+  private readonly countByDataSourceStmt: Database.Statement;
 
   constructor(private readonly db: Database.Database) {
     this.insertStmt = db.prepare(`
@@ -28,6 +29,9 @@ export class ChunkStore {
     );
     this.getByIdStmt = db.prepare('SELECT * FROM chunks WHERE id = ?');
     this.getByDataSourceStmt = db.prepare('SELECT * FROM chunks WHERE data_source_id = ?');
+    this.countByDataSourceStmt = db.prepare(
+      'SELECT COUNT(*) as count FROM chunks WHERE data_source_id = ?',
+    );
   }
 
   insert(chunk: ChunkRecord): void {
@@ -51,33 +55,54 @@ export class ChunkStore {
     tx(chunks);
   }
 
-  deleteByDataSource(dataSourceId: string): void {
-    this.deleteByDataSourceStmt.run(dataSourceId);
+  deleteByDataSource(dataSourceId: string): number {
+    const result = this.deleteByDataSourceStmt.run(dataSourceId);
+    return result.changes;
   }
 
-  deleteByFile(dataSourceId: string, filePath: string): void {
-    this.deleteByFileStmt.run(dataSourceId, filePath);
+  deleteByFile(dataSourceId: string, filePath: string): number {
+    const result = this.deleteByFileStmt.run(dataSourceId, filePath);
+    return result.changes;
   }
 
   getById(id: string): ChunkRecord | undefined {
     const row = this.getByIdStmt.get(id) as Record<string, unknown> | undefined;
-    return row ? this.mapRow(row) : undefined;
+    return row ? mapRow(row) : undefined;
   }
 
   getByDataSource(dataSourceId: string): ChunkRecord[] {
     const rows = this.getByDataSourceStmt.all(dataSourceId) as Record<string, unknown>[];
-    return rows.map(this.mapRow);
+    return rows.map(mapRow);
   }
 
-  private mapRow(row: Record<string, unknown>): ChunkRecord {
-    return {
-      id: row.id as string,
-      dataSourceId: row.data_source_id as string,
-      filePath: row.file_path as string,
-      startLine: row.start_line as number,
-      endLine: row.end_line as number,
-      content: row.content as string,
-      tokenCount: row.token_count as number,
-    };
+  getChunkIdsByDataSource(dataSourceId: string): string[] {
+    const rows = this.db
+      .prepare('SELECT id FROM chunks WHERE data_source_id = ?')
+      .all(dataSourceId) as Array<{ id: string }>;
+    return rows.map((r) => r.id);
   }
+
+  getChunkIdsByFile(dataSourceId: string, filePath: string): string[] {
+    const rows = this.db
+      .prepare('SELECT id FROM chunks WHERE data_source_id = ? AND file_path = ?')
+      .all(dataSourceId, filePath) as Array<{ id: string }>;
+    return rows.map((r) => r.id);
+  }
+
+  countByDataSource(dataSourceId: string): number {
+    const row = this.countByDataSourceStmt.get(dataSourceId) as { count: number };
+    return row.count;
+  }
+}
+
+function mapRow(row: Record<string, unknown>): ChunkRecord {
+  return {
+    id: row.id as string,
+    dataSourceId: row.data_source_id as string,
+    filePath: row.file_path as string,
+    startLine: row.start_line as number,
+    endLine: row.end_line as number,
+    content: row.content as string,
+    tokenCount: row.token_count as number,
+  };
 }

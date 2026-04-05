@@ -16,6 +16,7 @@ export class SyncStore {
   private readonly insertStmt: Database.Statement;
   private readonly updateStmt: Database.Statement;
   private readonly getLatestStmt: Database.Statement;
+  private readonly getByDataSourceStmt: Database.Statement;
 
   constructor(private readonly db: Database.Database) {
     this.insertStmt = db.prepare(`
@@ -30,8 +31,13 @@ export class SyncStore {
     this.getLatestStmt = db.prepare(`
       SELECT * FROM sync_history
       WHERE data_source_id = ?
-      ORDER BY started_at DESC
+      ORDER BY rowid DESC
       LIMIT 1
+    `);
+    this.getByDataSourceStmt = db.prepare(`
+      SELECT * FROM sync_history
+      WHERE data_source_id = ?
+      ORDER BY rowid DESC
     `);
   }
 
@@ -67,17 +73,25 @@ export class SyncStore {
 
   getLatest(dataSourceId: string): SyncRecord | undefined {
     const row = this.getLatestStmt.get(dataSourceId) as Record<string, unknown> | undefined;
-    if (!row) return undefined;
-    return {
-      id: row.id as string,
-      dataSourceId: row.data_source_id as string,
-      startedAt: row.started_at as string,
-      completedAt: row.completed_at as string | null,
-      status: row.status as SyncRecord['status'],
-      filesProcessed: row.files_processed as number,
-      chunksCreated: row.chunks_created as number,
-      errorMessage: row.error_message as string | null,
-      commitSha: row.commit_sha as string | null,
-    };
+    return row ? mapRow(row) : undefined;
   }
+
+  getByDataSource(dataSourceId: string): SyncRecord[] {
+    const rows = this.getByDataSourceStmt.all(dataSourceId) as Record<string, unknown>[];
+    return rows.map(mapRow);
+  }
+}
+
+function mapRow(row: Record<string, unknown>): SyncRecord {
+  return {
+    id: row.id as string,
+    dataSourceId: row.data_source_id as string,
+    startedAt: row.started_at as string,
+    completedAt: row.completed_at as string | null,
+    status: row.status as SyncRecord['status'],
+    filesProcessed: row.files_processed as number,
+    chunksCreated: row.chunks_created as number,
+    errorMessage: row.error_message as string | null,
+    commitSha: row.commit_sha as string | null,
+  };
 }
