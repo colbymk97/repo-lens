@@ -87,6 +87,7 @@ describe('IngestionPipeline', () => {
   function makePipeline(
     dataSources: DataSourceConfig[],
     provider?: EmbeddingProvider,
+    deltaSync?: any,
   ) {
     const dsMap = new Map(dataSources.map((ds) => [ds.id, { ...ds }]));
 
@@ -120,6 +121,7 @@ describe('IngestionPipeline', () => {
         embeddingStore,
         syncStore,
         logger,
+        deltaSync,
       ),
       config,
       logger,
@@ -374,5 +376,109 @@ describe('IngestionPipeline', () => {
     pipeline.dispose();
     // Don't close testDb — the hanging promises may reference it.
     // In-memory DBs are cleaned up on GC.
+  });
+
+  it('uses delta sync when lastSyncCommitSha is set', async () => {
+    const ds = makeDataSource({ lastSyncCommitSha: 'old-sha' });
+    const files = [{ path: 'a.ts', content: 'original content' }];
+    mockGitHubApi(files);
+
+    const mockDeltaSync = {
+      computeDelta: vi.fn().mockResolvedValue({
+        added: [{ path: 'new.ts', sha: 'blob-sha-0', size: 10, type: 'blob' }],
+        modified: [],
+        deleted: [],
+        unchanged: ['a.ts'],
+        newCommitSha: 'abc123',
+      }),
+    };
+
+    const { pipeline, dsMap } = makePipeline([ds], undefined, mockDeltaSync);
+
+    // First do a full index so there's existing data
+    await pipeline.ingestDataSource('ds-1');
+    const countAfterFull = chunkStore.countByDataSource('ds-1');
+    expect(countAfterFull).toBeGreaterThan(0);
+
+    // Now set lastSyncCommitSha and re-ingest — should use delta
+    dsMap.get('ds-1')!.lastSyncCommitSha = 'old-sha';
+    await pipeline.ingestDataSource('ds-1');
+
+    expect(mockDeltaSync.computeDelta).toHaveBeenCalledWith(
+      'test', 'repo', 'old-sha', 'abc123',
+    );
+    expect(dsMap.get('ds-1')!.status).toBe('ready');
+  });
+
+  it('falls back to full reindex when delta sync fails', async () => {
+    const ds = makeDataSource({ lastSyncCommitSha: 'old-sha' });
+    const files = [{ path: 'a.ts', content: 'content' }];
+    mockGitHubApi(files);
+
+    const mockDeltaSync = {
+      computeDelta: vi.fn().mockRejectedValue(new Error('compare failed')),
+    };
+
+    const { pipeline, dsMap, logger } = makePipeline([ds], undefined, mockDeltaSync);
+    await pipeline.ingestDataSource('ds-1');
+
+    // Should still succeed via full reindex
+    expect(dsMap.get('ds-1')!.status).toBe('ready');
+    expect((logger.warn as ReturnType<typeof vi.fn>).mock.calls.some(
+      (c: string[]) => c[0].includes('falling back'),
+    )).toBe(true);
+  });
+
+  it('delta sync removes chunks for deleted files', async () => {
+    const ds = makeDataSource();
+    const files = [
+      { path: 'a.ts', content: 'file a content' },
+      { path: 'b.ts', content: 'file b content' },
+    ];
+    mockGitHubApi(files);
+
+    const mockDeltaSync = {
+      computeDelta: vi.fn().mockResolvedValue({
+        added: [],
+        modified: [],
+        deleted: ['a.ts'],
+        unchanged: ['b.ts'],
+        newCommitSha: 'abc123',
+      }),
+    };
+
+    const { pipeline, dsMap } = makePipeline([ds], undefined, mockDeltaSync);
+
+    // Full index first
+    await pipeline.ingestDataSource('ds-1');
+    const chunksBeforeDelta = chunkStore.getByDataSource('ds-1');
+    const aChunks = chunksBeforeDelta.filter((c) => c.filePath === 'a.ts');
+    expect(aChunks.length).toBeGreaterThan(0);
+
+    // Delta sync — delete a.ts
+    dsMap.get('ds-1')!.lastSyncCommitSha = 'prev-sha';
+    await pipeline.ingestDataSource('ds-1');
+
+    const chunksAfterDelta = chunkStore.getByDataSource('ds-1');
+    const aChunksAfter = chunksAfterDelta.filter((c) => c.filePath === 'a.ts');
+    expect(aChunksAfter).toHaveLength(0);
+    // b.ts should still exist
+    const bChunksAfter = chunksAfterDelta.filter((c) => c.filePath === 'b.ts');
+    expect(bChunksAfter.length).toBeGreaterThan(0);
+  });
+
+  it('reports progress during ingestion', async () => {
+    const ds = makeDataSource();
+    const files = [{ path: 'a.ts', content: 'hello world' }];
+    mockGitHubApi(files);
+
+    const { pipeline } = makePipeline([ds]);
+    const progress = { report: vi.fn() };
+
+    await pipeline.ingestDataSource('ds-1', progress);
+
+    expect(progress.report).toHaveBeenCalled();
+    const messages = progress.report.mock.calls.map((c: any) => c[0]);
+    expect(messages.some((m: string) => m.includes('Fetching'))).toBe(true);
   });
 });
