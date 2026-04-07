@@ -19,6 +19,7 @@ import { ToolManager } from './tools/toolManager';
 import { DataSourceTreeProvider, ToolTreeProvider } from './ui/sidebar/sidebarProvider';
 import { AddRepoWizard } from './ui/wizard/addRepoWizard';
 import { registerCommands } from './ui/commands';
+import { DeltaSync } from './sources/sync/deltaSync';
 import { Logger } from './util/logger';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -46,6 +47,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const embeddingStore = new EmbeddingStore(db);
   const syncStore = new SyncStore(db);
 
+  // Delta sync
+  const deltaSync = new DeltaSync(getToken);
+
   // Ingestion
   const pipeline = new IngestionPipeline(
     configManager,
@@ -55,6 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
     embeddingStore,
     syncStore,
     logger,
+    deltaSync,
   );
 
   // Data source management
