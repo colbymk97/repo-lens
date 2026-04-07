@@ -16,6 +16,18 @@ npx vitest run test/unit/storage/database.test.ts
 
 **Note:** Storage tests (`test/unit/storage/`) crash locally on Apple Silicon when Node runs as x64 under Rosetta 2 — `sqlite-vec`'s prebuilt binary uses AVX instructions Rosetta doesn't support. These tests pass on native x86_64 (GitHub CI). Embedding tests always pass.
 
+## Dev Workflow (build → install → run)
+
+```bash
+npm run dev:install    # build + vsce package + code --install-extension + open new window
+# or directly:
+bash scripts/dev-install.sh
+```
+
+This produces `repolens-dev.vsix`, installs it, and opens a new VS Code window. Use this whenever you want to manually test a change end-to-end.
+
+**Viewing logs:** View → Output → select **RepoLens**. Set `repoLens.log.level = "debug"` in settings for verbose output.
+
 ## Packaging and Local Install
 
 ```bash
@@ -30,18 +42,20 @@ To uninstall:
 code --uninstall-extension repolens.repolens
 ```
 
-The `--no-dependencies` flag is passed in CI (`npx vsce package --no-dependencies`) to skip bundling node_modules into the VSIX — the extension relies on VS Code's Node runtime, not a bundled tree.
+Dependencies (including native modules like `better-sqlite3` and `sqlite-vec`) are bundled into the VSIX. CI builds platform-specific VSIXs via `vsce package --target <platform>` on matching runners (linux-x64, darwin-arm64, darwin-x64).
+
+**Apple Silicon note:** `dev-install.sh` detects x64 Node running under Rosetta and automatically rebuilds native modules for arm64 before packaging.
 
 ## Releasing
 
-Push a version tag to trigger the release workflow, which builds the VSIX and publishes a GitHub prerelease:
+Push a version tag to trigger the release workflow, which builds platform-specific VSIXs and publishes a GitHub release:
 
 ```bash
 git tag v0.0.1
 git push origin v0.0.1
 ```
 
-The workflow (`.github/workflows/release.yml`) runs on any `v*` tag, packages the VSIX, and attaches it to the GitHub release.
+The workflow (`.github/workflows/release.yml`) runs on any `v*` tag, builds for each platform via `_build.yml`, and attaches all VSIXs to the release.
 
 ## Architecture Overview
 

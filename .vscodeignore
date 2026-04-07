@@ -1,6 +1,5 @@
 .github/**
 .vscode-test/**
-node_modules/**
 src/**
 test/**
 docs/**
