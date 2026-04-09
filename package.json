@@ -199,8 +199,14 @@
     "better-sqlite3": "^12.8.0",
     "minimatch": "^10.0.1",
     "sqlite-vec": "^0.1.6",
-    "sqlite-vec-darwin-arm64": "^0.1.9",
     "tiktoken": "^1.0.18"
+  },
+  "optionalDependencies": {
+    "sqlite-vec-darwin-arm64": "^0.1.9",
+    "sqlite-vec-darwin-x64": "^0.1.9",
+    "sqlite-vec-linux-x64": "^0.1.9",
+    "sqlite-vec-linux-arm64": "^0.1.9",
+    "sqlite-vec-windows-x64": "^0.1.9"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
