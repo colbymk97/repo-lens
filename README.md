@@ -7,10 +7,33 @@ Yoink indexes GitHub repositories into a local SQLite vector database and expose
 ## Features
 
 - Index any public or private GitHub repository as a searchable data source
+- Multiple chunking strategies — fixed-size token windows for general content,
+  markdown-heading splits for docs, file-level for action.yml / workflows, and
+  AST-based splitting (Tree-sitter) that produces one chunk per function,
+  method, or class for source code
 - Vector search via `sqlite-vec` (brute-force KNN, fully local)
 - Automatic delta sync — only re-indexes changed files since last sync
 - Multiple tools, each scoped to a subset of data sources
 - OpenAI-compatible embedding API (defaults to `text-embedding-3-small`)
+
+### Repo types
+
+When you add a repository, you pick a type that drives the include filters
+and the chunking strategy used for every file in the data source.
+
+| Type                       | Strategy           | Best for                                 |
+|----------------------------|--------------------|------------------------------------------|
+| `general`                  | `token-split`      | Mixed-content repos, default             |
+| `documentation`            | `markdown-heading` | Repos dominated by `.md` / `docs/**`     |
+| `source-code`              | `ast-based`        | TS/TSX, JS/JSX, Python, Go, Java, C#, Rust, Ruby |
+| `github-actions-library`   | `file-level`       | `action.yml` collections                 |
+| `cicd-workflows`           | `file-level`       | `.github/workflows/**`                   |
+| `openapi-specs`            | `token-split`      | YAML/JSON API specs                      |
+
+For `source-code`, the AST chunker prefixes each method with its enclosing
+class (e.g. `// Class: UserService`) so the embedded text carries context.
+Files with extensions outside the supported language set fall back to
+token-split, so polyglot code repos work without manual configuration.
 
 ## Requirements
 

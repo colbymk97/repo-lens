@@ -69,11 +69,80 @@ Yoink is a VS Code extension that indexes GitHub repositories into a local SQLit
 
 ```
 GitHub Trees API → fileFilter (glob) → GitHub Blobs API
-  → chunker (512-token fixed-size, 64-token overlap, tiktoken)
+  → chunker (strategy chosen by data source preset)
   → OpenAI embedding API → better-sqlite3 (chunks + vec0)
 ```
 
 `src/ingestion/pipeline.ts` orchestrates this. A concurrent queue (limit: 3 parallel data sources) is managed inside the pipeline. Status transitions (`queued → indexing → ready | error`) are written to both the SQLite `data_sources` table and `yoink.json`.
+
+### Chunking
+
+The chunker (`src/ingestion/chunker.ts`) dispatches on a `ChunkingStrategy`, chosen **per data source** by the `RepoTypePreset` (`src/config/repoTypePresets.ts`). All files in a given ingest run go through the same strategy — there is no per-file strategy routing at the top level. Files that don't fit are handled by each strategy's own fallback.
+
+| Strategy           | What it does                                                              | Used by preset(s)                          |
+|--------------------|---------------------------------------------------------------------------|--------------------------------------------|
+| `token-split`      | Fixed-size token windows with overlap (default 512 / 64).                 | `general`, `openapi-specs`                 |
+| `file-level`       | One chunk per file. Good for action.yml, workflow files.                  | `github-actions-library`, `cicd-workflows` |
+| `markdown-heading` | Splits on `#` headings; oversized sections fall back to `token-split`.    | `documentation`                            |
+| `ast-based`        | Tree-sitter — one chunk per top-level function, method, or class.         | `source-code`                              |
+
+`ast-based` is the only strategy that does file-type dispatch internally:
+- `languageDetection.ts` maps the extension to a supported language
+  (TypeScript, TSX, JS/JSX, Python, Go, Java, C#, Rust, Ruby).
+- Unknown extensions, parse failures, or files with no captured definitions
+  fall back to `chunkByTokens` for the whole file — the `ast-based` preset
+  is therefore safe to point at polyglot repos.
+- Each method chunk is prefixed with a comment header naming its enclosing
+  class (`// Class: UserService` / `# Class: Greeter`). Go uses the receiver,
+  Rust uses the `impl` target type.
+- Classes that contain methods are not emitted as their own chunk (the
+  methods cover them, prefixed with the class name); empty classes /
+  data classes / interfaces emit as a single chunk.
+- Oversized definitions are split via the strategy's `fallback`
+  (token-split), with line numbers offset to the node's position so search
+  results still point at the right lines.
+
+`Chunker.chunkFile` is `async` because `ast-based` lazy-loads WASM grammars
+on first use. The other strategies await trivially.
+
+#### How to add a new strategy
+
+1. Add the literal to `ChunkingStrategy` in `src/ingestion/chunker.ts`.
+2. Add a private method to `Chunker` implementing it; dispatch from
+   `chunkFile` with a single `if` branch.
+3. If it needs external dependencies (e.g. `ast-based` needs `ParserRegistry`),
+   add an optional field to `ChunkerOptions`, thread it through
+   `pipeline.ts` and `extension.ts`, and assert presence in the dispatch
+   branch.
+4. Add a preset to `REPO_TYPE_PRESETS` that uses the new strategy (and
+   matching `includePatterns`).
+5. Add unit tests in `test/unit/ingestion/`.
+
+#### How to add a new language to the AST strategy
+
+1. Verify the WASM grammar is available in
+   `node_modules/@vscode/tree-sitter-wasm/wasm/tree-sitter-<lang>.wasm`
+   (or add a different source).
+2. Extend `SupportedLanguage` in `src/ingestion/languageDetection.ts` and
+   map any file extensions in `EXTENSION_TO_LANGUAGE`. Set the comment
+   prefix in `lineCommentPrefix` if it isn't `//`.
+3. Add a query file at `src/chunking/queries/<lang>.scm` capturing
+   `@definition.function`, `@definition.method`, and/or `@definition.class`.
+4. Add the WASM filename to `WASM_FILENAME` in
+   `src/ingestion/parserRegistry.ts`.
+5. Add the language's class-like node types to `CONTAINER_TYPES` in
+   `src/ingestion/astChunker.ts` so methods get a parent-class prefix.
+   For languages without classes (Go-style methods), special-case in
+   `resolveContainerName`.
+6. Update the `'source-code'` preset's `includePatterns` to include the
+   new extension.
+7. Add a fixture under `test/fixtures/ast/` and assertions in
+   `test/unit/ingestion/astChunker.test.ts`.
+
+Queries live in `src/chunking/queries/` and are copied to `dist/queries/`
+by `scripts/copy-queries.mjs` (chained from `npm run build`). The VSIX
+packaging step (`.vscodeignore`) ships both `dist/queries/**` and
+`node_modules/@vscode/tree-sitter-wasm/**`.
 
 ### Query Path (read path)
 
