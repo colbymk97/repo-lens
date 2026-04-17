@@ -1,3 +1,6 @@
+import { chunkByAst, AstChunkerLogger } from './astChunker';
+import type { ParserRegistry } from './parserRegistry';
+
 export interface Chunk {
   content: string;
   startLine: number;
@@ -5,13 +8,19 @@ export interface Chunk {
   tokenCount: number;
 }
 
-export type ChunkingStrategy = 'token-split' | 'file-level' | 'markdown-heading';
+export type ChunkingStrategy = 'token-split' | 'file-level' | 'markdown-heading' | 'ast-based';
+
+export interface AstChunkerDepsOption {
+  parserRegistry: ParserRegistry;
+  logger?: AstChunkerLogger;
+}
 
 export interface ChunkerOptions {
   maxTokens: number;
   overlapTokens: number;
   countTokens: (text: string) => number;
   strategy: ChunkingStrategy;
+  astDeps?: AstChunkerDepsOption;
 }
 
 const DEFAULT_MAX_TOKENS = 512;
@@ -23,19 +32,37 @@ export class Chunker {
   private readonly overlapTokens: number;
   private readonly countTokens: (text: string) => number;
   private readonly strategy: ChunkingStrategy;
+  private readonly astDeps?: AstChunkerDepsOption;
 
   constructor(options?: Partial<ChunkerOptions>) {
     this.maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS;
     this.overlapTokens = options?.overlapTokens ?? DEFAULT_OVERLAP_TOKENS;
     this.countTokens = options?.countTokens ?? DEFAULT_COUNT_TOKENS;
     this.strategy = options?.strategy ?? 'token-split';
+    this.astDeps = options?.astDeps;
   }
 
-  chunkFile(content: string, filePath: string): Chunk[] {
+  async chunkFile(content: string, filePath: string): Promise<Chunk[]> {
     if (!content) return [];
+    if (this.strategy === 'ast-based') return this.chunkByAst(content, filePath);
     if (this.strategy === 'file-level') return this.chunkAsWhole(content);
     if (this.strategy === 'markdown-heading') return this.chunkByHeadings(content);
     return this.chunkByTokens(content, filePath);
+  }
+
+  private chunkByAst(content: string, filePath: string): Promise<Chunk[]> {
+    if (!this.astDeps) {
+      throw new Error(
+        "Chunker configured with strategy 'ast-based' but astDeps.parserRegistry was not provided",
+      );
+    }
+    return chunkByAst(content, filePath, {
+      parserRegistry: this.astDeps.parserRegistry,
+      countTokens: this.countTokens,
+      maxTokens: this.maxTokens,
+      fallback: (text, path) => this.chunkByTokens(text, path),
+      logger: this.astDeps.logger,
+    });
   }
 
   // One chunk spanning the entire file. Used for action.yml and workflow files

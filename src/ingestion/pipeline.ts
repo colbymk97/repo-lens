@@ -6,6 +6,7 @@ import { GitHubFetcher } from '../sources/github/githubFetcher';
 import { DeltaSync } from '../sources/sync/deltaSync';
 import { FileFilter } from './fileFilter';
 import { Chunker } from './chunker';
+import { ParserRegistry } from './parserRegistry';
 import { ChunkStore, ChunkRecord } from '../storage/chunkStore';
 import { EmbeddingStore } from '../storage/embeddingStore';
 import { SyncStore } from '../storage/syncStore';
@@ -48,6 +49,7 @@ export class IngestionPipeline {
     private readonly syncStore: SyncStore,
     private readonly logger: PipelineLogger,
     private readonly deltaSync?: DeltaSync,
+    private readonly parserRegistry?: ParserRegistry,
   ) {}
 
   onIndexingError(handler: (dataSourceId: string, message: string) => void): void {
@@ -172,11 +174,14 @@ export class IngestionPipeline {
           countTokens: provider.countTokens
             ? (text: string) => provider.countTokens!(text)
             : undefined,
+          astDeps: this.parserRegistry
+            ? { parserRegistry: this.parserRegistry, logger: this.logger }
+            : undefined,
         });
 
         const allChunks: ChunkRecord[] = [];
         for (const file of files) {
-          const chunks = chunker.chunkFile(file.content, file.path);
+          const chunks = await chunker.chunkFile(file.content, file.path);
           for (const chunk of chunks) {
             allChunks.push({
               id: crypto.randomUUID(),
@@ -248,12 +253,15 @@ export class IngestionPipeline {
       countTokens: provider.countTokens
         ? (text: string) => provider.countTokens!(text)
         : undefined,
+      astDeps: this.parserRegistry
+        ? { parserRegistry: this.parserRegistry, logger: this.logger }
+        : undefined,
     });
 
     // Chunk all files
     const allChunks: ChunkRecord[] = [];
     for (const file of files) {
-      const chunks = chunker.chunkFile(file.content, file.path);
+      const chunks = await chunker.chunkFile(file.content, file.path);
       for (const chunk of chunks) {
         allChunks.push({
           id: crypto.randomUUID(),

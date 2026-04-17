@@ -8,6 +8,7 @@ import { ChunkingStrategy } from '../ingestion/chunker';
 export type DataSourceType =
   | 'general'
   | 'documentation'
+  | 'source-code'
   | 'github-actions-library'
   | 'cicd-workflows'
   | 'openapi-specs';
@@ -37,6 +38,16 @@ export const REPO_TYPE_PRESETS: Record<DataSourceType, RepoTypePreset> = {
     includePatterns: ['**/*.md', 'docs/**', 'wiki/**'],
     chunkingStrategy: 'markdown-heading',
     toolDescriptionTemplate: (o, r) => `Search ${o}/${r} documentation and standards`,
+  },
+  'source-code': {
+    id: 'source-code',
+    displayName: 'Source code (AST)',
+    wizardDescription:
+      'Code files — chunks split on functions, methods, and classes via Tree-sitter',
+    includePatterns: ['**/*.{ts,tsx,js,jsx,mjs,cjs,py,go,java,cs,rs,rb}'],
+    chunkingStrategy: 'ast-based',
+    toolDescriptionTemplate: (o, r) =>
+      `Search the ${o}/${r} codebase for functions, methods, and classes`,
   },
   'github-actions-library': {
     id: 'github-actions-library',
