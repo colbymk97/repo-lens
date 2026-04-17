@@ -1,3 +1,7 @@
+import { createGunzip } from 'node:zlib';
+import { Readable } from 'node:stream';
+import { pipeline as streamPipeline } from 'node:stream/promises';
+import { extract as tarExtract } from 'tar-stream';
 import { FetchedFile, FileTreeEntry } from '../dataSource';
 import { githubHeaders } from './githubResolver';
 
@@ -77,6 +81,77 @@ export class GitHubFetcher {
     }
 
     return res.text();
+  }
+
+  /**
+   * Fetch every eligible file in one API call by downloading the repo tarball.
+   * Vastly cheaper than per-blob fetches for full re-indexes. The caller
+   * supplies the tree entries it wants indexed (already filtered by the
+   * data-source's include/exclude rules); this method applies the same
+   * binary-extension and size caps `fetchFiles` uses.
+   */
+  async fetchAllFiles(
+    owner: string,
+    repo: string,
+    sha: string,
+    entries: FileTreeEntry[],
+  ): Promise<FetchedFile[]> {
+    const eligible = entries.filter((entry) => {
+      if (entry.size > MAX_FILE_SIZE) return false;
+      return !BINARY_EXTENSIONS.has(extname(entry.path));
+    });
+    if (eligible.length === 0) return [];
+    const allowedPaths = new Set(eligible.map((e) => e.path));
+
+    await this.waitForRateLimit();
+    const token = await this.getToken();
+    const res = await fetch(
+      `${GITHUB_API}/repos/${enc(owner)}/${enc(repo)}/tarball/${enc(sha)}`,
+      { headers: githubHeaders(token) },
+    );
+    this.updateRateLimit(res);
+
+    if (!res.ok) {
+      throw new Error(`GitHub Tarball API error ${res.status}: ${res.statusText}`);
+    }
+    if (!res.body) {
+      throw new Error('GitHub Tarball API returned an empty body');
+    }
+
+    const results: FetchedFile[] = [];
+    const extract = tarExtract();
+
+    extract.on('entry', (header, stream, next) => {
+      // Tarball entries are prefixed with `<owner>-<repo>-<shortsha>/`. Strip it.
+      const firstSlash = header.name.indexOf('/');
+      const relPath = firstSlash === -1 ? '' : header.name.slice(firstSlash + 1);
+
+      if (header.type !== 'file' || !relPath || !allowedPaths.has(relPath)) {
+        stream.resume();
+        stream.on('end', next);
+        stream.on('error', next);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+      stream.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        results.push({
+          path: relPath,
+          content: buf.toString('utf8'),
+          sha: '',
+          size: buf.length,
+        });
+        next();
+      });
+      stream.on('error', next);
+    });
+
+    const nodeStream = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]);
+    await streamPipeline(nodeStream, createGunzip(), extract);
+
+    return results;
   }
 
   async fetchFiles(

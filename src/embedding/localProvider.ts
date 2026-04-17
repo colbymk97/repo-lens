@@ -5,6 +5,12 @@ export interface LocalProviderOptions {
   model: string;     // e.g. nomic-embed-text
   dimensions: number;
   apiKey?: string;   // optional — some local servers require a key
+  /**
+   * Per-input token cap for the local model. Defaults to 512, which is the
+   * context length of most sentence-transformer-style models. Bump higher
+   * (e.g. 2048, 8192) for models like nomic-embed-text that accept more.
+   */
+  maxInputTokens?: number;
 }
 
 /** Transient HTTP status codes that warrant a retry. */
@@ -15,6 +21,7 @@ const INITIAL_BACKOFF_MS = 1000;
 export class LocalEmbeddingProvider implements EmbeddingProvider {
   readonly id = 'local';
   readonly maxBatchSize = 512;  // conservative for local hardware
+  readonly maxInputTokens: number;
   readonly dimensions: number;
 
   private readonly baseUrl: string;
@@ -26,6 +33,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
     this.model = options.model;
     this.dimensions = options.dimensions;
     this.apiKey = options.apiKey;
+    this.maxInputTokens = options.maxInputTokens ?? 512;
   }
 
   async embed(texts: string[]): Promise<number[][]> {

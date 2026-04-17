@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { gzipSync } from 'node:zlib';
+import { pack as tarPack } from 'tar-stream';
 import { GitHubFetcher } from '../../../../src/sources/github/githubFetcher';
+
+async function buildTarGz(entries: Array<{ name: string; content: string }>): Promise<Buffer> {
+  const pack = tarPack();
+  for (const e of entries) {
+    pack.entry({ name: e.name }, e.content);
+  }
+  pack.finalize();
+  const chunks: Buffer[] = [];
+  for await (const chunk of pack) chunks.push(chunk as Buffer);
+  return gzipSync(Buffer.concat(chunks));
+}
 
 function makeFetcher() {
   return new GitHubFetcher(async () => 'test-token');
@@ -227,6 +240,56 @@ describe('GitHubFetcher', () => {
       // Should only get the file that succeeded
       expect(files).toHaveLength(1);
       expect(files[0].path).toBe('allowed.ts');
+    });
+  });
+
+  describe('fetchAllFiles (tarball)', () => {
+    function mockTarResponse(buf: Buffer) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: new Headers({
+          'X-RateLimit-Remaining': '4999',
+          'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + 3600),
+        }),
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new Uint8Array(buf));
+            controller.close();
+          },
+        }),
+      } as unknown as Response;
+    }
+
+    it('pulls only allowed entries from the tarball', async () => {
+      const tarball = await buildTarGz([
+        { name: 'repo-abc1234/src/index.ts', content: 'export const a = 1;\n' },
+        { name: 'repo-abc1234/src/util.ts', content: 'export const b = 2;\n' },
+        { name: 'repo-abc1234/README.md', content: '# skip me\n' },
+        { name: 'repo-abc1234/image.png', content: 'binary' },
+      ]);
+      globalThis.fetch = vi.fn().mockResolvedValue(mockTarResponse(tarball));
+
+      const fetcher = makeFetcher();
+      const files = await fetcher.fetchAllFiles('owner', 'repo', 'abc1234', [
+        { path: 'src/index.ts', sha: 'aaa', size: 20, type: 'blob' },
+        { path: 'src/util.ts', sha: 'bbb', size: 20, type: 'blob' },
+        { path: 'image.png', sha: 'ccc', size: 6, type: 'blob' }, // binary, filtered
+      ]);
+
+      const paths = files.map((f) => f.path).sort();
+      expect(paths).toEqual(['src/index.ts', 'src/util.ts']);
+      const index = files.find((f) => f.path === 'src/index.ts')!;
+      expect(index.content).toBe('export const a = 1;\n');
+    });
+
+    it('returns empty array when no entries are eligible', async () => {
+      globalThis.fetch = vi.fn();
+      const fetcher = makeFetcher();
+      const files = await fetcher.fetchAllFiles('owner', 'repo', 'abc', []);
+      expect(files).toEqual([]);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
     });
   });
 

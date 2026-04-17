@@ -23,6 +23,7 @@ import { ToolManager } from '../../../src/tools/toolManager';
 describe('ToolManager', () => {
   let toolHandler: any;
   let logger: any;
+  let configManager: any;
 
   beforeEach(() => {
     registeredTools.clear();
@@ -39,10 +40,14 @@ describe('ToolManager', () => {
       warn: vi.fn(),
       error: vi.fn(),
     };
+
+    configManager = {
+      getTools: vi.fn().mockReturnValue([]),
+    };
   });
 
   it('registerAll registers both global search and list tools', () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
 
     expect(registeredTools.has('yoink-search')).toBe(true);
@@ -51,7 +56,7 @@ describe('ToolManager', () => {
   });
 
   it('does not duplicate global tool on repeated registerAll calls', () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
     manager.registerAll();
 
@@ -61,7 +66,7 @@ describe('ToolManager', () => {
   });
 
   it('does not duplicate list tool on repeated registerAll calls', () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
     manager.registerAll();
 
@@ -71,7 +76,7 @@ describe('ToolManager', () => {
   });
 
   it('global search tool invokes toolHandler.handleGlobalSearch', async () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
 
     const handler = registeredTools.get('yoink-search');
@@ -85,7 +90,7 @@ describe('ToolManager', () => {
   });
 
   it('list tool invokes toolHandler.handleList', async () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
 
     const handler = registeredTools.get('yoink-list');
@@ -99,7 +104,7 @@ describe('ToolManager', () => {
   });
 
   it('dispose cleans up all registered tools', () => {
-    const manager = new ToolManager(toolHandler, logger);
+    const manager = new ToolManager(toolHandler, logger, configManager);
     manager.registerAll();
 
     manager.dispose();

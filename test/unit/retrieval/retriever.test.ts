@@ -13,6 +13,7 @@ function makeProvider(embedResult: number[][]): EmbeddingProvider {
   return {
     id: 'test',
     maxBatchSize: 100,
+    maxInputTokens: 8000,
     dimensions: DIMS,
     embed: async (texts: string[]) => embedResult,
     countTokens: (text: string) => Math.ceil(text.length / 4),

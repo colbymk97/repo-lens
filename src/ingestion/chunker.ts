@@ -21,6 +21,13 @@ export interface ChunkerOptions {
   overlapTokens: number;
   countTokens: (text: string) => number;
   /**
+   * Hard per-input token cap imposed by the downstream embedding provider.
+   * No chunk emitted by the chunker will exceed this. Provider-specific:
+   * OpenAI/Azure cap at 8192; local/sentence-transformer models are often
+   * much smaller (512). Defaults to 8000 for backward compatibility.
+   */
+  maxInputTokens: number;
+  /**
    * Force a single strategy for every file, bypassing per-file routing.
    * Primarily for tests; production callers should rely on routing.
    */
@@ -31,10 +38,12 @@ export interface ChunkerOptions {
 const DEFAULT_MAX_TOKENS = 512;
 const DEFAULT_OVERLAP_TOKENS = 64;
 const DEFAULT_COUNT_TOKENS = (text: string): number => Math.ceil(text.length / 4);
+const DEFAULT_MAX_INPUT_TOKENS = 8000;
 
 export class Chunker {
   private readonly maxTokens: number;
   private readonly overlapTokens: number;
+  private readonly maxInputTokens: number;
   private readonly countTokens: (text: string) => number;
   private readonly forcedStrategy?: ChunkingStrategy;
   private readonly astDeps?: AstChunkerDepsOption;
@@ -42,6 +51,7 @@ export class Chunker {
   constructor(options?: Partial<ChunkerOptions>) {
     this.maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS;
     this.overlapTokens = options?.overlapTokens ?? DEFAULT_OVERLAP_TOKENS;
+    this.maxInputTokens = options?.maxInputTokens ?? DEFAULT_MAX_INPUT_TOKENS;
     this.countTokens = options?.countTokens ?? DEFAULT_COUNT_TOKENS;
     this.forcedStrategy = options?.strategy;
     this.astDeps = options?.astDeps;
@@ -49,15 +59,18 @@ export class Chunker {
 
   async chunkFile(content: string, filePath: string): Promise<Chunk[]> {
     if (!content) return [];
+    let strategy: ChunkingStrategy;
     if (this.forcedStrategy) {
-      return this.dispatch(this.forcedStrategy, content, filePath);
+      strategy = this.forcedStrategy;
+    } else {
+      strategy = Chunker.routeStrategy(filePath);
+      if (strategy === 'ast-based' && !this.astDeps) {
+        // Parser registry wasn't wired in — degrade gracefully rather than throw.
+        strategy = 'token-split';
+      }
     }
-    let strategy = Chunker.routeStrategy(filePath);
-    if (strategy === 'ast-based' && !this.astDeps) {
-      // Parser registry wasn't wired in — degrade gracefully rather than throw.
-      strategy = 'token-split';
-    }
-    return this.dispatch(strategy, content, filePath);
+    const raw = await this.dispatch(strategy, content, filePath);
+    return this.enforceInputLimit(raw);
   }
 
   /**
@@ -81,7 +94,7 @@ export class Chunker {
 
   private dispatch(strategy: ChunkingStrategy, content: string, filePath: string): Promise<Chunk[]> | Chunk[] {
     if (strategy === 'ast-based') return this.chunkByAst(content, filePath);
-    if (strategy === 'file-level') return this.chunkAsWhole(content);
+    if (strategy === 'file-level') return this.chunkAsWhole(content, filePath);
     if (strategy === 'markdown-heading') return this.chunkByHeadings(content);
     return this.chunkByTokens(content, filePath);
   }
@@ -102,15 +115,87 @@ export class Chunker {
   }
 
   // One chunk spanning the entire file. Used for action.yml and workflow files
-  // where each file is a self-contained semantic unit.
-  private chunkAsWhole(content: string): Chunk[] {
+  // where each file is a self-contained semantic unit. When the file exceeds
+  // the embedding model's per-input limit, degrade along a filetype-aware path:
+  // top-level YAML keys first (preserves `jobs`, `steps`, etc.), then token-split.
+  private chunkAsWhole(content: string, filePath: string): Chunk[] {
+    const tokenCount = this.countTokens(content);
+    if (tokenCount <= this.maxInputTokens) {
+      const lines = content.split('\n');
+      return [{ content, startLine: 1, endLine: lines.length, tokenCount }];
+    }
+    if (/\.ya?ml$/i.test(filePath)) {
+      const byKey = this.chunkYamlByTopLevelKeys(content);
+      if (byKey !== null) return byKey;
+    }
+    return this.chunkByTokens(content, filePath);
+  }
+
+  // Split a YAML document into chunks keyed on top-level map entries
+  // (lines matching `key:` in column 0). A block that's still too large
+  // after this split is recursively reduced via token-split.
+  private chunkYamlByTopLevelKeys(content: string): Chunk[] | null {
     const lines = content.split('\n');
-    return [{
-      content,
-      startLine: 1,
-      endLine: lines.length,
-      tokenCount: this.countTokens(content),
-    }];
+    const keyLineRegex = /^[A-Za-z_][\w-]*:(\s|$)/;
+    const boundaries: number[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (keyLineRegex.test(lines[i])) boundaries.push(i);
+    }
+    if (boundaries.length < 2) return null;
+
+    if (boundaries[0] !== 0) boundaries.unshift(0);
+    boundaries.push(lines.length);
+
+    const chunks: Chunk[] = [];
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const startIdx = boundaries[i];
+      const endIdx = boundaries[i + 1];
+      const sectionContent = lines.slice(startIdx, endIdx).join('\n');
+      if (!sectionContent.trim()) continue;
+      const tokenCount = this.countTokens(sectionContent);
+      if (tokenCount <= this.maxInputTokens) {
+        chunks.push({
+          content: sectionContent,
+          startLine: startIdx + 1,
+          endLine: endIdx,
+          tokenCount,
+        });
+      } else {
+        chunks.push(...this.chunkByTokens(sectionContent, '', startIdx));
+      }
+    }
+    return chunks.length > 0 ? chunks : null;
+  }
+
+  // Final safety net. Any strategy can emit a chunk that still exceeds the
+  // per-input limit if a single logical line is enormous (minified JS, inline
+  // base64 blobs, generated docs). When that happens we've already exhausted
+  // semantic splitting, so we divide by character count as a last resort.
+  private enforceInputLimit(chunks: Chunk[]): Chunk[] {
+    const out: Chunk[] = [];
+    for (const chunk of chunks) {
+      if (chunk.tokenCount <= this.maxInputTokens) {
+        out.push(chunk);
+        continue;
+      }
+      const ratio = chunk.content.length / Math.max(chunk.tokenCount, 1);
+      const maxChars = Math.max(1, Math.floor(this.maxInputTokens * ratio * 0.9));
+      let offset = 0;
+      let lineCursor = chunk.startLine;
+      while (offset < chunk.content.length) {
+        const slice = chunk.content.slice(offset, offset + maxChars);
+        const newlines = (slice.match(/\n/g) ?? []).length;
+        out.push({
+          content: slice,
+          startLine: lineCursor,
+          endLine: lineCursor + newlines,
+          tokenCount: this.countTokens(slice),
+        });
+        lineCursor += newlines;
+        offset += maxChars;
+      }
+    }
+    return out;
   }
 
   // Split on Markdown headings (lines starting with '#'). Each heading and its

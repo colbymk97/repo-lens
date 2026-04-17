@@ -2,6 +2,13 @@ export interface EmbeddingProvider {
   readonly id: string;
   readonly maxBatchSize: number;
   readonly dimensions: number;
+  /**
+   * Hard cap on tokens per single input text. The chunker uses this to
+   * ensure no individual chunk exceeds what this provider/model will accept
+   * in one embedding call. Callers should leave a small safety margin below
+   * the provider's documented limit to account for tokenizer differences.
+   */
+  readonly maxInputTokens: number;
 
   /**
    * Embed an array of texts, returning one vector per input text.

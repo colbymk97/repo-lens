@@ -19,9 +19,14 @@ const MODEL_DIMENSIONS: Record<string, number> = {
   'text-embedding-ada-002': 1536,
 };
 
+/** OpenAI hard limit is 300k tokens per /embeddings request; leave headroom. */
+const MAX_TOKENS_PER_REQUEST = 270_000;
+
 export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   readonly id = 'openai';
   readonly maxBatchSize = 2048;
+  /** OpenAI embedding models cap each input at 8192 tokens; leave headroom. */
+  readonly maxInputTokens = 8000;
   readonly dimensions: number;
 
   private readonly apiKey: string;
@@ -39,13 +44,31 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   async embed(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
 
-    // Split into sub-batches if needed
     const results: number[][] = [];
-    for (let i = 0; i < texts.length; i += this.maxBatchSize) {
-      const batch = texts.slice(i, i + this.maxBatchSize);
+    let batch: string[] = [];
+    let batchTokens = 0;
+
+    for (const text of texts) {
+      const tokens = Math.min(this.countTokens(text), MAX_TOKENS_PER_REQUEST);
+
+      const overCount = batch.length >= this.maxBatchSize;
+      const overTokens = batch.length > 0 && batchTokens + tokens > MAX_TOKENS_PER_REQUEST;
+      if (overCount || overTokens) {
+        const batchResults = await this.embedBatch(batch);
+        results.push(...batchResults);
+        batch = [];
+        batchTokens = 0;
+      }
+
+      batch.push(text);
+      batchTokens += tokens;
+    }
+
+    if (batch.length > 0) {
       const batchResults = await this.embedBatch(batch);
       results.push(...batchResults);
     }
+
     return results;
   }
 

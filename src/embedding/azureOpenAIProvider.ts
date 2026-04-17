@@ -14,9 +14,14 @@ const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503]);
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
 
+/** Azure OpenAI enforces the same 300k-token-per-request cap; leave headroom. */
+const MAX_TOKENS_PER_REQUEST = 270_000;
+
 export class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
   readonly id = 'azure-openai';
   readonly maxBatchSize = 2048;
+  /** Azure OpenAI matches OpenAI's 8192-token per-input cap; leave headroom. */
+  readonly maxInputTokens = 8000;
   readonly dimensions: number;
 
   private readonly apiKey: string;
@@ -34,11 +39,30 @@ export class AzureOpenAIEmbeddingProvider implements EmbeddingProvider {
     if (texts.length === 0) return [];
 
     const results: number[][] = [];
-    for (let i = 0; i < texts.length; i += this.maxBatchSize) {
-      const batch = texts.slice(i, i + this.maxBatchSize);
+    let batch: string[] = [];
+    let batchTokens = 0;
+
+    for (const text of texts) {
+      const tokens = Math.min(this.countTokens(text), MAX_TOKENS_PER_REQUEST);
+
+      const overCount = batch.length >= this.maxBatchSize;
+      const overTokens = batch.length > 0 && batchTokens + tokens > MAX_TOKENS_PER_REQUEST;
+      if (overCount || overTokens) {
+        const batchResults = await this.embedBatch(batch);
+        results.push(...batchResults);
+        batch = [];
+        batchTokens = 0;
+      }
+
+      batch.push(text);
+      batchTokens += tokens;
+    }
+
+    if (batch.length > 0) {
       const batchResults = await this.embedBatch(batch);
       results.push(...batchResults);
     }
+
     return results;
   }
 

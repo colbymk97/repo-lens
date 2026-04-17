@@ -25,6 +25,7 @@ function makeProvider(): EmbeddingProvider {
   return {
     id: 'test',
     maxBatchSize: 100,
+    maxInputTokens: 8000,
     dimensions: 4,
     embed: vi.fn().mockResolvedValue([[0.1, 0.2, 0.3, 0.4]]),
     countTokens: (t: string) => Math.ceil(t.length / 4),

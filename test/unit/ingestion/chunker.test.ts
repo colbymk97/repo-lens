@@ -327,3 +327,48 @@ describe('Chunker — ast-based strategy (forced)', () => {
     await expect(chunker.chunkFile('function x() {}', 'x.ts')).rejects.toThrow(/parserRegistry/);
   });
 });
+
+describe('Chunker — per-input limit', () => {
+  // Simulate the OpenAI 8192-token cap with a lower threshold. wordCount
+  // treats each whitespace-separated token as 1 token.
+  const bigWord = 'x';
+
+  it('splits an oversized file-level YAML on top-level keys', async () => {
+    const chunker = new Chunker({
+      countTokens: wordCount,
+      maxTokens: 50,
+    });
+    // Each section has ~9000 "words" — far over the 8000 per-input limit.
+    const big = Array.from({ length: 9000 }, () => bigWord).join(' ');
+    const content = [
+      'name: my workflow',
+      `jobs: ${big}`,
+      `steps: ${big}`,
+    ].join('\n');
+
+    const chunks = await chunker.chunkFile(content, '.github/workflows/ci.yml');
+
+    // Must produce multiple chunks, each under the per-input cap.
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) {
+      expect(chunk.tokenCount).toBeLessThanOrEqual(8000);
+    }
+  });
+
+  it('char-splits chunks whose content still exceeds the per-input cap', async () => {
+    // Force file-level on a non-YAML path so the YAML key-split doesn't run
+    // and we exercise the safety net. A single enormous line can't be split
+    // by token-split either (line > maxTokens is emitted whole).
+    const chunker = new Chunker({
+      strategy: 'file-level',
+      countTokens: wordCount,
+    });
+    const huge = Array.from({ length: 20000 }, () => bigWord).join(' ');
+    const chunks = await chunker.chunkFile(huge, 'blob.bin');
+
+    expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) {
+      expect(chunk.tokenCount).toBeLessThanOrEqual(8000);
+    }
+  });
+});

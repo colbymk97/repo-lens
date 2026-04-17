@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ToolHandler } from './toolHandler';
 import { GET_FILE_TOOL } from './getFileTool';
 import { Logger } from '../util/logger';
+import { ConfigManager } from '../config/configManager';
 
 export class ToolManager implements vscode.Disposable {
   private readonly registeredTools = new Map<string, vscode.Disposable>();
@@ -9,7 +10,12 @@ export class ToolManager implements vscode.Disposable {
   constructor(
     private readonly toolHandler: ToolHandler,
     private readonly logger: Logger,
+    private readonly configManager: ConfigManager,
   ) {}
+
+  private registrationName(name: string): string {
+    return name;
+  }
 
   registerAll(): void {
     this.registerGlobalSearchTool();
@@ -36,6 +42,15 @@ export class ToolManager implements vscode.Disposable {
 
   private registerListTool(): void {
     if (this.registeredTools.has('__list__')) return;
+
+    const disposable = vscode.lm.registerTool('yoink-list', {
+      invoke: async (_options, token) => {
+        return this.toolHandler.handleList(token);
+      },
+    });
+
+    this.registeredTools.set('__list__', disposable);
+    this.logger.info('Registered list tool');
   }
   private registerGetFileTool(): void {
     if (this.registeredTools.has('__getfile__')) return;
@@ -63,25 +78,17 @@ export class ToolManager implements vscode.Disposable {
     const desiredNames = new Set(
       configTools.map((t) => this.registrationName(t.name)),
     );
+    const reserved = new Set(['__global__', '__getfile__', '__list__']);
 
     // Unregister tools no longer in config
     for (const [key, disposable] of this.registeredTools) {
-      if (key === '__global__' || key === '__getfile__') continue;
+      if (reserved.has(key)) continue;
       if (!desiredNames.has(key)) {
         disposable.dispose();
         this.registeredTools.delete(key);
         this.logger.info(`Unregistered tool: ${key}`);
       }
     }
-
-    const disposable = vscode.lm.registerTool('yoink-list', {
-      invoke: async (_options, token) => {
-        return this.toolHandler.handleList(token);
-      },
-    });
-
-    this.registeredTools.set('__list__', disposable);
-    this.logger.info('Registered list tool');
   }
 
   dispose(): void {

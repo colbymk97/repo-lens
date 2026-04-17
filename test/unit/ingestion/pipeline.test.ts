@@ -40,6 +40,7 @@ function makeMockProvider(): EmbeddingProvider {
   return {
     id: 'test',
     maxBatchSize: 100,
+    maxInputTokens: 8000,
     dimensions: TEST_DIMS,
     embed: vi.fn().mockImplementation(async (texts: string[]) => {
       // Return a deterministic vector based on text length

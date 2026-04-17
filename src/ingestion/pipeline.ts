@@ -171,6 +171,7 @@ export class IngestionPipeline {
           countTokens: provider.countTokens
             ? (text: string) => provider.countTokens!(text)
             : undefined,
+          maxInputTokens: provider.maxInputTokens,
           astDeps: this.parserRegistry
             ? { parserRegistry: this.parserRegistry, logger: this.logger }
             : undefined,
@@ -239,8 +240,9 @@ export class IngestionPipeline {
     this.embeddingStore.deleteByChunkIds(oldChunkIds);
     this.chunkStore.deleteByDataSource(dataSourceId);
 
-    // Fetch file contents
-    const files = await this.fetcher.fetchFiles(ds.owner, ds.repo, filteredEntries);
+    // Fetch file contents in a single tarball request rather than one blob
+    // call per file — saves ~N GitHub API calls on large repos.
+    const files = await this.fetcher.fetchAllFiles(ds.owner, ds.repo, commitSha, filteredEntries);
 
     // Get embedding provider and build chunker
     const provider = await this.embeddingSource.getProvider();
@@ -248,6 +250,7 @@ export class IngestionPipeline {
       countTokens: provider.countTokens
         ? (text: string) => provider.countTokens!(text)
         : undefined,
+      maxInputTokens: provider.maxInputTokens,
       astDeps: this.parserRegistry
         ? { parserRegistry: this.parserRegistry, logger: this.logger }
         : undefined,

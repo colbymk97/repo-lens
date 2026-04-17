@@ -95,7 +95,7 @@ export function activate(context: vscode.ExtensionContext): void {
     chunkStore,
     fetcher,
   );
-  const toolManager = new ToolManager(toolHandler, logger);
+  const toolManager = new ToolManager(toolHandler, logger, configManager);
   toolManager.registerAll();
 
   // Sidebar
