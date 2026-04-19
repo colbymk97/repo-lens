@@ -5,7 +5,7 @@ export class AgentInstaller {
 
   async install(workspaceUri: vscode.Uri): Promise<number> {
     const sourceDir = vscode.Uri.joinPath(this.extensionUri, 'agents');
-    const targetDir = vscode.Uri.joinPath(workspaceUri, '.claude', 'agents');
+    const targetDir = vscode.Uri.joinPath(workspaceUri, '.copilot', 'agents');
 
     await vscode.workspace.fs.createDirectory(targetDir);
 
@@ -27,7 +27,7 @@ export class AgentInstaller {
   }
 
   async isInstalled(workspaceUri: vscode.Uri): Promise<boolean> {
-    const markerUri = vscode.Uri.joinPath(workspaceUri, '.claude', 'agents', 'yoink-agent.md');
+    const markerUri = vscode.Uri.joinPath(workspaceUri, '.copilot', 'agents', 'yoink-agent.md');
     try {
       await vscode.workspace.fs.stat(markerUri);
       return true;

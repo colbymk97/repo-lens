@@ -152,14 +152,14 @@ export function activate(context: vscode.ExtensionContext): void {
   // Detect workspace config and prompt import
   workspaceConfigManager.detectAndPrompt();
 
-  // Prompt to install Claude Code agent files on first activation
+  // Prompt to install Copilot agent files on first activation
   const primaryFolder = vscode.workspace.workspaceFolders?.[0];
   if (primaryFolder) {
     agentInstaller.isInstalled(primaryFolder.uri).then((installed) => {
       if (!installed) {
         vscode.window
           .showInformationMessage(
-            'Yoink: Install agent files for Claude Code in this workspace?',
+            'Yoink: Install agent files for Copilot in this workspace?',
             'Install',
             'Later',
           )
