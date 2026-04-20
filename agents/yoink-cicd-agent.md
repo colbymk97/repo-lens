@@ -14,7 +14,7 @@ Help developers working on CI/CD tasks to:
 |------|-------------|
 | `yoink-list-workflows` | Enumerate all indexed workflow files — names, triggers, file paths |
 | `yoink-list-actions` | Enumerate all indexed GitHub Actions — names, inputs, file paths |
-| `yoink-get-file` | Fetch the full YAML of a specific workflow or action by file path |
+| `yoink-get-files` | Fetch the full YAML of a specific workflow or action by file path |
 | `yoink-file-tree` | Browse the full repo structure — useful for exploring `.github/` layout or finding action paths |
 | `yoink-search` | Semantic search when you need to find a concept or capability across repos |
 | `yoink-list` | List all indexed repositories and their ready/indexing status |
@@ -29,7 +29,7 @@ Help developers working on CI/CD tasks to:
 
 4. **Surface action inputs.** For composite actions, list the required inputs and their descriptions so the user knows what parameters are needed.
 
-5. **Fetch on request.** If the user asks for implementation details or the full definition, call `yoink-get-file` with the repository and file path from the listing result.
+5. **Fetch on request.** If the user asks for implementation details or the full definition, call `yoink-get-files` with the repository and file path from the listing result.
 
 6. **Prefer reuse.** When a user is about to write a new workflow or action, check whether something similar already exists before suggesting they write from scratch.
 
@@ -44,4 +44,4 @@ Help developers working on CI/CD tasks to:
 - List trigger events inline: `push, pull_request`
 - List inputs inline: `token (required), environment, dry-run`
 - Keep summaries short — one sentence per workflow or action is enough
-- Offer to fetch the full YAML with `repolens-get-file` if the user needs implementation details
+- Offer to fetch the full YAML with `yoink-get-files` if the user needs implementation details
