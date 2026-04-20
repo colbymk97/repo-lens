@@ -6,7 +6,9 @@ vi.mock('vscode', () => ({
     showInputBox: vi.fn(),
     showInformationMessage: vi.fn(),
     showWarningMessage: vi.fn(),
+    withProgress: vi.fn().mockImplementation((_opts: unknown, fn: () => unknown) => fn()),
   },
+  ProgressLocation: { Notification: 15 },
 }));
 
 import * as vscode from 'vscode';
@@ -42,6 +44,7 @@ describe('AddRepoWizard', () => {
     };
     browser = {
       listUserRepos: vi.fn().mockResolvedValue([]),
+      listAllUserRepos: vi.fn().mockResolvedValue([]),
     };
     dataSourceManager = {
       add: vi.fn().mockResolvedValue({ id: 'ds-1' }),
@@ -210,7 +213,7 @@ describe('AddRepoWizard', () => {
   });
 
   it('browses repos when user chooses browse', async () => {
-    browser.listUserRepos.mockResolvedValue([
+    browser.listAllUserRepos.mockResolvedValue([
       { owner: 'acme', repo: 'widgets', fullName: 'acme/widgets', description: 'Desc', private: false },
     ]);
 
@@ -237,7 +240,7 @@ describe('AddRepoWizard', () => {
     const wizard = new AddRepoWizard(resolver, browser, dataSourceManager, configManager, embeddingRegistry);
     await wizard.run();
 
-    expect(browser.listUserRepos).toHaveBeenCalled();
+    expect(browser.listAllUserRepos).toHaveBeenCalled();
     expect(dataSourceManager.add).toHaveBeenCalled();
   });
 

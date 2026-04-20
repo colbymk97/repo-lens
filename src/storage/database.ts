@@ -122,7 +122,7 @@ function migrate(db: Database.Database, dimensions: number): void {
       INSERT INTO chunks_fts (chunk_id, data_source_id, file_path, content)
       SELECT id, data_source_id, file_path, content FROM chunks;
     `);
-    setSchemaVersion(db, 3);
+    setSchemaVersion(db, SCHEMA_VERSION);
   }
 }
 
