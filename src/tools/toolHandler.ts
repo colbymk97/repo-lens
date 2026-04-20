@@ -9,6 +9,8 @@ import { SETTING_KEYS } from '../config/settingsSchema';
 import { buildFileTree } from './fileTreeBuilder';
 
 const MAX_FILE_BYTES = 500_000;
+const MAX_FILES = 10;
+const MAX_TOTAL_BYTES = 2_000_000;
 
 const BINARY_EXTENSIONS = new Set([
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'bmp', 'svg',
@@ -159,87 +161,128 @@ export class ToolHandler {
     return this.executeSearch(options.input.query, targetIds, searchedRepos);
   }
 
-  async handleGetFile(
+  async handleGetFiles(
     options: vscode.LanguageModelToolInvocationOptions<{
-      repository: string;
-      filePath: string;
-      startLine?: number;
-      endLine?: number;
+      files: Array<{
+        repository: string;
+        filePath: string;
+        startLine?: number;
+        endLine?: number;
+      }>;
     }>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { repository, filePath, startLine, endLine } = options.input;
+    const { files } = options.input;
 
-    const ds = this.configManager
-      .getDataSources()
-      .find((s) => `${s.owner}/${s.repo}`.toLowerCase() === repository.toLowerCase());
-
-    if (!ds) {
-      const available = this.configManager
-        .getDataSources()
-        .map((s) => `${s.owner}/${s.repo}`)
-        .join(', ') || 'none';
+    if (!files?.length) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart('Provide at least one file in the files array.'),
+      ]);
+    }
+    if (files.length > MAX_FILES) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Repository "${repository}" is not indexed. Indexed repositories: ${available}`,
+          `Too many files requested (${files.length}). Maximum is ${MAX_FILES} per call.`,
         ),
       ]);
     }
 
-    const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
-    if (BINARY_EXTENSIONS.has(ext)) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          `"${filePath}" appears to be a binary file (extension: .${ext}). Only text files are supported.`,
-        ),
-      ]);
-    }
+    type Resolved =
+      | { kind: 'binary'; f: typeof files[0]; ext: string }
+      | { kind: 'no-repo'; f: typeof files[0]; available: string }
+      | { kind: 'fetch'; f: typeof files[0]; ds: import('../config/configSchema').DataSourceConfig };
 
-    try {
-      const raw = await this.fetcher.getFileContents(ds.owner, ds.repo, filePath, ds.branch);
+    const allSources = this.configManager.getDataSources();
+    const availableList = allSources.map((s) => `${s.owner}/${s.repo}`).join(', ') || 'none';
 
+    const resolved: Resolved[] = files.map((f) => {
+      const ext = f.filePath.split('.').pop()?.toLowerCase() ?? '';
+      if (BINARY_EXTENSIONS.has(ext)) return { kind: 'binary', f, ext };
+      const ds = allSources.find(
+        (s) => `${s.owner}/${s.repo}`.toLowerCase() === f.repository.toLowerCase(),
+      );
+      if (!ds) return { kind: 'no-repo', f, available: availableList };
+      return { kind: 'fetch', f, ds };
+    });
+
+    const fetched = await Promise.allSettled(
+      resolved.map((r) =>
+        r.kind === 'fetch'
+          ? this.fetcher.getFileContents(r.ds.owner, r.ds.repo, r.f.filePath, r.ds.branch)
+          : Promise.resolve(''),
+      ),
+    );
+
+    const sections: string[] = [];
+    let totalBytes = 0;
+    let successCount = 0;
+    const n = files.length;
+
+    for (let i = 0; i < n; i++) {
+      const r = resolved[i];
+      const label = `[${i + 1}/${n}] ${r.f.repository} · ${r.f.filePath}`;
+
+      if (r.kind === 'binary') {
+        sections.push(`${label}\nSkipped: binary file (.${r.ext})`);
+        continue;
+      }
+      if (r.kind === 'no-repo') {
+        sections.push(`${label}\nError: repository not indexed. Available: ${r.available}`);
+        continue;
+      }
+
+      const result = fetched[i];
+      if (result.status === 'rejected') {
+        const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        sections.push(`${label}\nError: ${msg}`);
+        continue;
+      }
+
+      const raw = result.value;
       if (raw.length > MAX_FILE_BYTES) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `"${filePath}" is too large to return in full (${Math.round(raw.length / 1024)} KB). ` +
-            `Use startLine/endLine to fetch a specific section.`,
-          ),
-        ]);
+        sections.push(
+          `${label}\nError: file too large (${Math.round(raw.length / 1024)} KB). ` +
+          `Use startLine/endLine to fetch a specific section.`,
+        );
+        continue;
+      }
+      if (totalBytes + raw.length > MAX_TOTAL_BYTES) {
+        sections.push(
+          `${label}\nSkipped: total response size limit reached (${MAX_TOTAL_BYTES / 1_000_000} MB). ` +
+          `Make a separate call for remaining files.`,
+        );
+        continue;
       }
 
       const lines = raw.split('\n');
       const totalLines = lines.length;
-
       let sliced: string[];
-      let rangeStart: number;
-      let rangeEnd: number;
+      let rangeNote: string;
 
-      if (startLine !== undefined || endLine !== undefined) {
-        rangeStart = Math.max(1, startLine ?? 1);
-        rangeEnd = Math.min(totalLines, endLine ?? totalLines);
-        sliced = lines.slice(rangeStart - 1, rangeEnd);
+      if (r.f.startLine !== undefined || r.f.endLine !== undefined) {
+        const start = Math.max(1, r.f.startLine ?? 1);
+        const end = Math.min(totalLines, r.f.endLine ?? totalLines);
+        sliced = lines.slice(start - 1, end);
+        rangeNote = ` · lines ${start}–${end} of ${totalLines}`;
       } else {
-        rangeStart = 1;
-        rangeEnd = totalLines;
         sliced = lines;
+        rangeNote = ` · ${totalLines} lines`;
       }
 
-      const lang = langHint(filePath);
-      const rangeNote = (rangeStart !== 1 || rangeEnd !== totalLines)
-        ? ` · Lines ${rangeStart}–${rangeEnd} of ${totalLines}`
-        : ` · ${totalLines} lines`;
-      const header = `**${ds.owner}/${ds.repo}** · \`${ds.branch}\` · \`${filePath}\`${rangeNote}`;
-      const body = `\`\`\`${lang}\n${sliced.join('\n')}\n\`\`\``;
+      const content = sliced.join('\n');
+      totalBytes += content.length;
+      successCount++;
 
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`${header}\n\n${body}`),
-      ]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(message),
-      ]);
+      const lang = langHint(r.f.filePath);
+      sections.push(
+        `${label}${rangeNote}\n\`\`\`${lang}\n${content}\n\`\`\``,
+      );
     }
+
+    const summary = n > 1 ? `${successCount}/${n} files fetched\n\n` : '';
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(summary + sections.join('\n\n')),
+    ]);
   }
 
   async handleListWorkflows(

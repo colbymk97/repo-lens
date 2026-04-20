@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ToolHandler } from './toolHandler';
-import { GET_FILE_TOOL } from './getFileTool';
+import { GET_FILES_TOOL } from './getFileTool';
 import { LIST_WORKFLOWS_TOOL, LIST_ACTIONS_TOOL } from './cicdTool';
 import { FILE_TREE_TOOL } from './fileTreeTool';
 import { Logger } from '../util/logger';
@@ -22,7 +22,7 @@ export class ToolManager implements vscode.Disposable {
   registerAll(): void {
     this.registerGlobalSearchTool();
     this.registerListTool();
-    this.registerGetFileTool();
+    this.registerGetFilesTool();
     this.registerListWorkflowsTool();
     this.registerListActionsTool();
     this.registerFileTreeTool();
@@ -57,25 +57,27 @@ export class ToolManager implements vscode.Disposable {
     this.registeredTools.set('__list__', disposable);
     this.logger.info('Registered list tool');
   }
-  private registerGetFileTool(): void {
-    if (this.registeredTools.has('__getfile__')) return;
+  private registerGetFilesTool(): void {
+    if (this.registeredTools.has('__getfiles__')) return;
 
-    const disposable = vscode.lm.registerTool(GET_FILE_TOOL.name, {
+    const disposable = vscode.lm.registerTool(GET_FILES_TOOL.name, {
       invoke: async (options, token) => {
-        return this.toolHandler.handleGetFile(
+        return this.toolHandler.handleGetFiles(
           options as vscode.LanguageModelToolInvocationOptions<{
-            repository: string;
-            filePath: string;
-            startLine?: number;
-            endLine?: number;
+            files: Array<{
+              repository: string;
+              filePath: string;
+              startLine?: number;
+              endLine?: number;
+            }>;
           }>,
           token,
         );
       },
     });
 
-    this.registeredTools.set('__getfile__', disposable);
-    this.logger.info('Registered get file tool');
+    this.registeredTools.set('__getfiles__', disposable);
+    this.logger.info('Registered get-files tool');
   }
 
   private registerListWorkflowsTool(): void {
@@ -139,7 +141,7 @@ export class ToolManager implements vscode.Disposable {
     const desiredNames = new Set(
       configTools.map((t) => this.registrationName(t.name)),
     );
-    const reserved = new Set(['__global__', '__getfile__', '__list__', '__list-workflows__', '__list-actions__', '__file-tree__']);
+    const reserved = new Set(['__global__', '__getfiles__', '__list__', '__list-workflows__', '__list-actions__', '__file-tree__']);
 
     // Unregister tools no longer in config
     for (const [key, disposable] of this.registeredTools) {

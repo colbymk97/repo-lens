@@ -128,6 +128,31 @@ Export multiple files from an indexed repository directly into workspace paths w
 }
 ```
 
+### 4. Progressive Large-Result Navigation
+
+Agents currently have no clean way to navigate large search result sets or large directory trees — the pattern of writing to temp files and reading them back is fragile and wasteful. Progressive expansion lets the agent drill down incrementally without exiting the tool interface.
+
+- `yoink-search` and `yoink-file-tree` responses include a cursor or `page` token when results are truncated
+- Agent calls the same tool again with `page: 2` (already supported in `yoink-file-tree`; needs adding to search)
+- For search: expose an `offset` parameter so the agent can skip already-seen results and ask for the next batch
+- For file tree: subtree expansion via `path:` is already implemented; the agent just needs to know when to use it — add an explicit `hasMore: true` hint in the response header when depth was capped
+- No temp files, no workspace side-effects, no out-of-band state; everything flows through tool responses
+
+**Why it matters:** agents that need to scan many results today either stop early (missing relevant content) or write intermediate files (fragile, leaves artifacts). Progressive pagination keeps the agent entirely within the tool protocol.
+
+### 5. Batch Get-File
+
+`yoink-get-file` currently fetches one file per call. When an agent needs to read several files — e.g. after a file-tree scan or following up on multiple search hits — it must make N sequential calls. This multiplies latency and burns context budget on repeated tool scaffolding.
+
+- New tool `yoink-get-files` (plural) accepts `files: [{ repository, filePath, startLine?, endLine? }]`
+- Returns an array of results, one entry per requested file, in the same order
+- Each entry has `status: "ok" | "error" | "skipped"` plus content or error message
+- Same binary/size guards as `yoink-get-file` (500 KB limit, binary extension check) applied per file
+- `maxFiles` cap (e.g. 10) to prevent accidental over-fetching; agent gets a clear error if exceeded
+- Fetches run in parallel (same concurrency pattern as `GitHubFetcher.fetchFiles`)
+
+**Why it matters:** cuts N round-trips to 1 for common agent patterns like "read all files found in the tree" or "get the 3 files referenced in search results." Reduces perceived latency significantly for multi-file workflows.
+
 ## Prioritized Roadmap
 
 ### Quick Wins (1-2 weeks)
@@ -135,15 +160,17 @@ Export multiple files from an indexed repository directly into workspace paths w
 - Add completeness metadata and checksums.
 - Add progress and ETA for large fetches.
 - Add dry-run previews for export plans.
+- Add `offset` pagination to `yoink-search` for progressive result navigation.
+- Add `hasMore` hint to `yoink-file-tree` responses when depth was capped.
 
 ### Medium Lifts (1-2 sprints)
+- Implement `yoink-get-files` batch file fetch with parallel fetching and per-file status.
 - Implement yoink-export-files with conflict policies.
 - Add search-to-export workflow.
 - Add resumable transfer and robust retry behavior.
 - Add structured operation logs and job summaries.
 
 ### Larger Investments
-- Hybrid retrieval and intelligent reranking.
 - Atomic transactional multi-file apply with rollback.
 - Advanced governance and provenance controls.
 - Collaborative query and import recipes for teams.

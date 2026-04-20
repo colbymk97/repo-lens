@@ -290,8 +290,8 @@
         }
       },
       {
-        "name": "yoink-get-file",
-        "toolReferenceName": "yoinkGetFile",
+        "name": "yoink-get-files",
+        "toolReferenceName": "yoinkGetFiles",
         "canBeReferencedInPrompt": true,
         "tags": [
           "yoink",
@@ -299,33 +299,42 @@
           "file",
           "code"
         ],
-        "displayName": "Yoink: Get File",
-        "userDescription": "Fetch the full content of a file from an indexed GitHub repository.",
-        "modelDescription": "Fetch the complete content of a text file from an indexed GitHub repository. Always returns the full file in one call — no pagination needed. Fails for binary files or files over 500 KB. Use startLine and endLine only to focus on a specific section when you already know the range you need.",
+        "displayName": "Yoink: Get Files",
+        "userDescription": "Fetch the full content of one or more files from indexed GitHub repositories.",
+        "modelDescription": "Fetch the complete content of one or more text files from indexed GitHub repositories in a single call. Pass up to 10 files. Each file is returned in full — no pagination needed. Individual files that are binary or over 500 KB return an error entry without failing the whole batch. Total response is capped at 2 MB. Use startLine/endLine per file only when you need a specific section.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "repository": {
-              "type": "string",
-              "description": "The indexed repository in 'owner/repo' format (e.g. 'vercel/next.js'). Use the repository shown in search results."
-            },
-            "filePath": {
-              "type": "string",
-              "description": "Path to the file within the repository, as shown in search results."
-            },
-            "startLine": {
-              "type": "number",
-              "description": "Optional. First line to return (1-indexed). Use line numbers from search results."
-            },
-            "endLine": {
-              "type": "number",
-              "description": "Optional. Last line to return (1-indexed). Use line numbers from search results."
+            "files": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10,
+              "description": "Files to fetch. Maximum 10 per call.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "repository": {
+                    "type": "string",
+                    "description": "Indexed repository in 'owner/repo' format (e.g. 'vercel/next.js')."
+                  },
+                  "filePath": {
+                    "type": "string",
+                    "description": "Path to the file within the repository."
+                  },
+                  "startLine": {
+                    "type": "number",
+                    "description": "Optional. First line to return (1-indexed)."
+                  },
+                  "endLine": {
+                    "type": "number",
+                    "description": "Optional. Last line to return (1-indexed)."
+                  }
+                },
+                "required": ["repository", "filePath"]
+              }
             }
           },
-          "required": [
-            "repository",
-            "filePath"
-          ]
+          "required": ["files"]
         }
       },
       {

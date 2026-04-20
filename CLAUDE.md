@@ -264,7 +264,7 @@ Six built-in tools registered at activation via `ToolManager.registerAll()`:
 |-----------|---------------|-------------|
 | `yoink-search` | `handleGlobalSearch` | Hybrid vector + keyword search across indexed repos |
 | `yoink-list` | `handleList` | Lists all data sources and tools with status |
-| `yoink-get-file` | `handleGetFile` | Returns full file content from GitHub (≤ 500 KB, text only) |
+| `yoink-get-files` | `handleGetFiles` | Returns full content of 1–10 files from GitHub (≤ 500 KB each, ≤ 2 MB total) |
 | `yoink-file-tree` | `handleFileTree` | Deterministic directory/file hierarchy from indexed chunks |
 | `yoink-list-workflows` | `handleListWorkflows` | Lists `.github/workflows/` files with triggers |
 | `yoink-list-actions` | `handleListActions` | Lists `action.yml` files with names and inputs |
