@@ -47,5 +47,11 @@ jobs:
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
           prerelease: true
+          draft: true
           files: '*.vsix'
           generate_release_notes: true
+
+      - name: Publish release
+        run: gh release edit ${{ needs.tag.outputs.tag }} --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
