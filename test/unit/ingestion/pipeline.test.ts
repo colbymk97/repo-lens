@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { gzipSync } from 'node:zlib';
+import { pack as tarPack } from 'tar-stream';
 import Database from 'better-sqlite3';
 import { openDatabase } from '../../../src/storage/database';
 import { ChunkStore } from '../../../src/storage/chunkStore';
@@ -16,6 +18,15 @@ import { DataSourceConfig } from '../../../src/config/configSchema';
 import { EmbeddingProvider } from '../../../src/embedding/embeddingProvider';
 
 // --- Test fixtures ---
+
+async function buildTarGz(entries: Array<{ name: string; content: string }>): Promise<Buffer> {
+  const p = tarPack();
+  for (const e of entries) p.entry({ name: e.name }, e.content);
+  p.finalize();
+  const chunks: Buffer[] = [];
+  for await (const chunk of p) chunks.push(chunk as Buffer);
+  return gzipSync(Buffer.concat(chunks));
+}
 
 const TEST_DIMS = 4;
 
@@ -131,6 +142,9 @@ describe('IngestionPipeline', () => {
   }
 
   function mockGitHubApi(files: Array<{ path: string; content: string }>) {
+    // Build the tarball once, synchronously keyed on files content
+    let tarballBuf: Buffer | null = null;
+
     globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
       const urlStr = String(url);
       const headers = new Headers({
@@ -141,7 +155,7 @@ describe('IngestionPipeline', () => {
       // Branch SHA
       if (urlStr.includes('/branches/')) {
         return {
-          ok: true, status: 200, headers,
+          ok: true, status: 200, statusText: 'OK', headers,
           json: async () => ({ commit: { sha: 'abc123' } }),
         };
       }
@@ -149,7 +163,7 @@ describe('IngestionPipeline', () => {
       // Tree
       if (urlStr.includes('/git/trees/')) {
         return {
-          ok: true, status: 200, headers,
+          ok: true, status: 200, statusText: 'OK', headers,
           json: async () => ({
             tree: files.map((f, i) => ({
               path: f.path,
@@ -162,17 +176,37 @@ describe('IngestionPipeline', () => {
         };
       }
 
-      // Blob
-      if (urlStr.includes('/git/blobs/')) {
-        const sha = urlStr.split('/blobs/')[1];
-        const idx = parseInt(sha.replace('blob-sha-', ''), 10);
+      // Tarball — full ingest fetches the whole repo as a tar.gz
+      if (urlStr.includes('/tarball/')) {
+        if (!tarballBuf) {
+          tarballBuf = await buildTarGz(
+            files.map((f) => ({ name: `test-repo-abc123/${f.path}`, content: f.content })),
+          );
+        }
+        const buf = tarballBuf;
         return {
-          ok: true, status: 200, headers,
-          text: async () => files[idx].content,
+          ok: true, status: 200, statusText: 'OK', headers,
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(buf));
+              controller.close();
+            },
+          }),
         };
       }
 
-      return { ok: false, status: 404, headers, text: async () => 'not found' };
+      // Blob — delta sync fetches individual files via the blob API
+      if (urlStr.includes('/git/blobs/')) {
+        const sha = urlStr.split('/blobs/')[1];
+        const idx = parseInt(sha.replace('blob-sha-', ''), 10);
+        const content = isNaN(idx) ? '' : (files[idx]?.content ?? '');
+        return {
+          ok: true, status: 200, statusText: 'OK', headers,
+          text: async () => content,
+        };
+      }
+
+      return { ok: false, status: 404, statusText: 'Not Found', headers, text: async () => 'not found' };
     });
   }
 
