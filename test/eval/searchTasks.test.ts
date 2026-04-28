@@ -11,6 +11,7 @@ import { loadSearchEvalDataset, seedSearchEvalCorpus } from './searchEvalHarness
 
 const config = loadOpenAIResponsesConfigFromEnv();
 const describeIfOpenAI = config ? describe : describe.skip;
+const runFullEval = process.env.SEARCH_EVAL_FULL === '1';
 
 describeIfOpenAI('search task evaluation', () => {
   let db: Database.Database;
@@ -35,12 +36,19 @@ describeIfOpenAI('search task evaluation', () => {
   });
 
   it('produces a task-eval artifact and summary', async () => {
-    const summary = await runSearchTaskEvaluation(retriever, config!, undefined, {
-      taskIds: ['task-01', 'task-03', 'task-05'],
-    });
+    const summary = await runSearchTaskEvaluation(
+      retriever,
+      config!,
+      undefined,
+      runFullEval
+        ? {}
+        : {
+          taskIds: ['task-01', 'task-03', 'task-05'],
+        },
+    );
 
     expect(summary.dataset.taskCount).toBeGreaterThan(0);
     expect(summary.tasks.length).toBe(summary.dataset.taskCount);
     expect(summary.tasks[0].searchTurns).toBe(1);
-  }, 180_000);
+  }, runFullEval ? 600_000 : 180_000);
 });

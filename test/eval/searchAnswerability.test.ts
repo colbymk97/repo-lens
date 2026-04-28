@@ -11,6 +11,7 @@ import { loadSearchEvalDataset, seedSearchEvalCorpus } from './searchEvalHarness
 
 const config = loadOpenAIResponsesConfigFromEnv();
 const describeIfOpenAI = config ? describe : describe.skip;
+const runFullEval = process.env.SEARCH_EVAL_FULL === '1';
 
 describeIfOpenAI('search answerability evaluation', () => {
   let db: Database.Database;
@@ -35,14 +36,21 @@ describeIfOpenAI('search answerability evaluation', () => {
   });
 
   it('produces an answerability artifact and summary', async () => {
-    const summary = await runSearchAnswerabilityEvaluation(retriever, config!, undefined, {
-      promptIds: ['answer-01', 'answer-04', 'answer-07', 'answer-10'],
-      topKVariants: [3],
-    });
+    const summary = await runSearchAnswerabilityEvaluation(
+      retriever,
+      config!,
+      undefined,
+      runFullEval
+        ? {}
+        : {
+          promptIds: ['answer-01', 'answer-04', 'answer-07', 'answer-10'],
+          topKVariants: [3],
+        },
+    );
 
     expect(summary.dataset.promptCount).toBeGreaterThan(0);
-    expect(summary.byTopK['3']).toBeDefined();
+    expect(summary.byTopK[runFullEval ? '1' : '3']).toBeDefined();
     expect(summary.prompts.length).toBeGreaterThanOrEqual(summary.dataset.promptCount);
     expect(summary.prompts[0].answer.answer.length).toBeGreaterThan(0);
-  }, 180_000);
+  }, runFullEval ? 600_000 : 180_000);
 });
