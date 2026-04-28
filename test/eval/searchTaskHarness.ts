@@ -60,6 +60,10 @@ export interface SearchTaskSummary {
   tasks: SearchTaskRun[];
 }
 
+export interface SearchTaskRunOptions {
+  taskIds?: string[];
+}
+
 export const SEARCH_TASK_ARTIFACT_PATH = resolve(
   __dirname,
   '../../test-results/search-task-summary.json',
@@ -69,13 +73,18 @@ export async function runSearchTaskEvaluation(
   retriever: Retriever,
   config: OpenAIResponsesConfig,
   dataset: SearchEvalDataset = loadSearchEvalDataset(),
+  options: SearchTaskRunOptions = {},
 ): Promise<SearchTaskSummary> {
   const provider = makeSearchEvalProvider(dataset);
   const { repoByDataSourceId, dataSourceIdByRepo } = buildRepoMaps(dataset);
   const fileContentsByFile = buildFileContentsByFile(dataset);
   const taskRuns: SearchTaskRun[] = [];
+  const taskIdFilter = options.taskIds ? new Set(options.taskIds) : null;
+  const tasks = taskIdFilter
+    ? dataset.taskScenarios.filter((task) => taskIdFilter.has(task.id))
+    : dataset.taskScenarios;
 
-  for (const task of dataset.taskScenarios) {
+  for (const task of tasks) {
     const dataSourceIds = task.repository
       ? [dataSourceIdByRepo.get(task.repository)].filter(Boolean) as string[]
       : [];
@@ -125,7 +134,7 @@ export async function runSearchTaskEvaluation(
     artifactPath: SEARCH_TASK_ARTIFACT_PATH,
     model: config.model,
     dataset: {
-      taskCount: dataset.taskScenarios.length,
+      taskCount: tasks.length,
     },
     metrics: {
       successRate:

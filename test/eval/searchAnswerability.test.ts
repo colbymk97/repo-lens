@@ -35,13 +35,14 @@ describeIfOpenAI('search answerability evaluation', () => {
   });
 
   it('produces an answerability artifact and summary', async () => {
-    const summary = await runSearchAnswerabilityEvaluation(retriever, config!);
+    const summary = await runSearchAnswerabilityEvaluation(retriever, config!, undefined, {
+      promptIds: ['answer-01', 'answer-04', 'answer-07', 'answer-10'],
+      topKVariants: [3],
+    });
 
     expect(summary.dataset.promptCount).toBeGreaterThan(0);
-    expect(summary.byTopK['1']).toBeDefined();
     expect(summary.byTopK['3']).toBeDefined();
-    expect(summary.byTopK['5']).toBeDefined();
     expect(summary.prompts.length).toBeGreaterThanOrEqual(summary.dataset.promptCount);
     expect(summary.prompts[0].answer.answer.length).toBeGreaterThan(0);
-  }, 120_000);
+  }, 180_000);
 });

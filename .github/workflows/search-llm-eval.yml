@@ -45,11 +45,11 @@ jobs:
         run: npm run test:search-eval
 
       - name: Run answerability eval
-        run: npm run test:search-answerability
+        run: npm run search-eval:answerability:full
 
       - name: Run task eval
         if: ${{ github.event_name == 'schedule' || inputs.run_tasks != false }}
-        run: npm run test:search-tasks
+        run: npm run search-eval:tasks:full
 
       - name: Upload eval artifacts
         if: always()

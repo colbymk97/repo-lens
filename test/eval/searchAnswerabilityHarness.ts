@@ -66,6 +66,11 @@ export interface SearchAnswerabilitySummary {
   };
 }
 
+export interface SearchAnswerabilityRunOptions {
+  promptIds?: string[];
+  topKVariants?: number[];
+}
+
 export const SEARCH_ANSWERABILITY_ARTIFACT_PATH = resolve(
   __dirname,
   '../../test-results/search-answerability-summary.json',
@@ -75,13 +80,19 @@ export async function runSearchAnswerabilityEvaluation(
   retriever: Retriever,
   config: OpenAIResponsesConfig,
   dataset: SearchEvalDataset = loadSearchEvalDataset(),
+  options: SearchAnswerabilityRunOptions = {},
 ): Promise<SearchAnswerabilitySummary> {
   const provider = makeSearchEvalProvider(dataset);
   const { repoByDataSourceId, dataSourceIdByRepo } = buildRepoMaps(dataset);
   const promptRuns: SearchAnswerabilityPromptRun[] = [];
+  const promptIdFilter = options.promptIds ? new Set(options.promptIds) : null;
+  const prompts = promptIdFilter
+    ? dataset.answerabilityPrompts.filter((prompt) => promptIdFilter.has(prompt.id))
+    : dataset.answerabilityPrompts;
 
-  for (const prompt of dataset.answerabilityPrompts) {
-    for (const topK of prompt.topKVariants ?? [1, 3, 5]) {
+  for (const prompt of prompts) {
+    const topKVariants = options.topKVariants ?? prompt.topKVariants ?? [1, 3, 5];
+    for (const topK of topKVariants) {
       const dataSourceIds = prompt.repository
         ? [dataSourceIdByRepo.get(prompt.repository)].filter(Boolean) as string[]
         : [];
@@ -117,11 +128,11 @@ export async function runSearchAnswerabilityEvaluation(
     artifactPath: SEARCH_ANSWERABILITY_ARTIFACT_PATH,
     model: config.model,
     dataset: {
-      promptCount: dataset.answerabilityPrompts.length,
+      promptCount: prompts.length,
       promptCountByIntent: Object.fromEntries(
-        [...new Set(dataset.answerabilityPrompts.map((prompt) => prompt.intent))].map((intent) => [
+        [...new Set(prompts.map((prompt) => prompt.intent))].map((intent) => [
           intent,
-          dataset.answerabilityPrompts.filter((prompt) => prompt.intent === intent).length,
+          prompts.filter((prompt) => prompt.intent === intent).length,
         ]),
       ),
     },
