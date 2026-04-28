@@ -79,7 +79,8 @@ export class Chunker {
    * Callers may override via the `strategy` option but should only do so for tests.
    */
   static routeStrategy(filePath: string): ChunkingStrategy {
-    const lower = filePath.toLowerCase();
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const lower = normalizedPath.toLowerCase();
     if (lower.endsWith('.md') || lower.endsWith('.mdx')) return 'markdown-heading';
     if (
       lower.includes('.github/workflows/') &&

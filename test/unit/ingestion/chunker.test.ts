@@ -159,11 +159,14 @@ describe('Chunker.routeStrategy', () => {
   it('routes GitHub Actions workflow YAML to file-level', () => {
     expect(Chunker.routeStrategy('.github/workflows/ci.yml')).toBe('file-level');
     expect(Chunker.routeStrategy('.github/workflows/release.yaml')).toBe('file-level');
+    expect(Chunker.routeStrategy('.github\\workflows\\ci.yml')).toBe('file-level');
+    expect(Chunker.routeStrategy('C:\\repo\\.github\\workflows\\release.yaml')).toBe('file-level');
   });
 
   it('routes action.yml/action.yaml to file-level', () => {
     expect(Chunker.routeStrategy('action.yml')).toBe('file-level');
     expect(Chunker.routeStrategy('actions/checkout/action.yaml')).toBe('file-level');
+    expect(Chunker.routeStrategy('actions\\checkout\\action.yml')).toBe('file-level');
   });
 
   it('falls back to token-split for unknown file types', () => {
