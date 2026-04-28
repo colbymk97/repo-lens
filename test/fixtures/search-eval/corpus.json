@@ -1,0 +1,221 @@
+{
+  "dimensions": 8,
+  "dataSources": [
+    {
+      "id": "ds-app",
+      "owner": "acme",
+      "repo": "yoink-app",
+      "branch": "main"
+    },
+    {
+      "id": "ds-docs",
+      "owner": "acme",
+      "repo": "yoink-docs",
+      "branch": "main"
+    },
+    {
+      "id": "ds-platform",
+      "owner": "acme",
+      "repo": "yoink-platform",
+      "branch": "main"
+    },
+    {
+      "id": "ds-actions",
+      "owner": "acme",
+      "repo": "yoink-actions",
+      "branch": "main"
+    }
+  ],
+  "chunks": [
+    {
+      "id": "app-auth-session-1",
+      "dataSourceId": "ds-app",
+      "filePath": "src/auth/sessionManager.ts",
+      "startLine": 1,
+      "endLine": 32,
+      "tokenCount": 98,
+      "content": "export async function exchangeSessionCookie(rawToken: string) { return createSessionFromBearer(rawToken); } export const SESSION_COOKIE_NAME = 'yoink_session';",
+      "embedding": [0.98, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-auth-session-2",
+      "dataSourceId": "ds-app",
+      "filePath": "src/auth/sessionManager.ts",
+      "startLine": 33,
+      "endLine": 74,
+      "tokenCount": 91,
+      "content": "export async function revokeSessionCookie(sessionId: string) { return archiveSession(sessionId); } export function loadActiveSession(sessionId: string) { return readSessionRecord(sessionId); }",
+      "embedding": [0.95, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-security-token",
+      "dataSourceId": "ds-app",
+      "filePath": "src/security/tokenVerifier.ts",
+      "startLine": 1,
+      "endLine": 42,
+      "tokenCount": 103,
+      "content": "export function verifyBearer(token: string) { return decodeAndValidate(token); } export const TOKEN_CLOCK_SKEW_MS = 30000;",
+      "embedding": [0.96, 0.06, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-http-retry",
+      "dataSourceId": "ds-app",
+      "filePath": "src/http/retryPolicy.ts",
+      "startLine": 1,
+      "endLine": 40,
+      "tokenCount": 110,
+      "content": "export const DEFAULT_BACKOFF_MS = [100, 250, 500]; export function computeRetryDelay(attempt: number) { return DEFAULT_BACKOFF_MS[attempt] ?? 1000; }",
+      "embedding": [0.05, 0.98, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-cache-warmer",
+      "dataSourceId": "ds-app",
+      "filePath": "src/cache/cacheWarmer.ts",
+      "startLine": 1,
+      "endLine": 44,
+      "tokenCount": 96,
+      "content": "export const CACHE_WARMUP_LIMIT = 25; export async function primeRepositoryCache() { return fillWarmEntries(); }",
+      "embedding": [0.05, 0.1, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-search-planner",
+      "dataSourceId": "ds-app",
+      "filePath": "src/search/queryPlanner.ts",
+      "startLine": 1,
+      "endLine": 52,
+      "tokenCount": 124,
+      "content": "export const RRF_K = 60; export const PATH_WEIGHT = 0.15; export function blendSignals(keywordHits: unknown[], semanticHits: unknown[]) { return rerankWithFusion(keywordHits, semanticHits); }",
+      "embedding": [0.0, 0.0, 0.1, 0.98, 0.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-config-env",
+      "dataSourceId": "ds-app",
+      "filePath": "src/config/envLoader.ts",
+      "startLine": 1,
+      "endLine": 38,
+      "tokenCount": 89,
+      "content": "export const YOINK_API_BASE_URL = process.env.YOINK_API_BASE_URL ?? 'https://api.acme.test'; export function loadEnvironmentOverrides() { return process.env; }",
+      "embedding": [0.0, 0.0, 0.0, 0.1, 0.98, 0.0, 0.0, 0.0]
+    },
+    {
+      "id": "app-billing-invoice",
+      "dataSourceId": "ds-app",
+      "filePath": "src/billing/invoiceCalculator.ts",
+      "startLine": 1,
+      "endLine": 36,
+      "tokenCount": 82,
+      "content": "export function calculateAnnualInvoice(seats: number, pricePerSeat: number) { return seats * pricePerSeat * 12; }",
+      "embedding": [0.0, 0.0, 0.0, 0.0, 0.05, 0.98, 0.0, 0.0]
+    },
+    {
+      "id": "docs-auth-guide",
+      "dataSourceId": "ds-docs",
+      "filePath": "docs/authentication-guide.md",
+      "startLine": 1,
+      "endLine": 60,
+      "tokenCount": 140,
+      "content": "# Authentication Guide Connect GitHub, paste a repository URL, approve access, and add the data source after sign-in completes.",
+      "embedding": [0.85, 0.05, 0.0, 0.0, 0.1, 0.0, 0.98, 0.0]
+    },
+    {
+      "id": "docs-deploy-runbook",
+      "dataSourceId": "ds-docs",
+      "filePath": "docs/deployment/runbook.md",
+      "startLine": 1,
+      "endLine": 72,
+      "tokenCount": 156,
+      "content": "# Deployment Runbook Use this checklist for rollout, smoke tests, rollback, and canary validation during production releases.",
+      "embedding": [0.05, 0.2, 0.0, 0.0, 0.8, 0.0, 0.97, 0.25]
+    },
+    {
+      "id": "docs-search-tuning",
+      "dataSourceId": "ds-docs",
+      "filePath": "docs/search-tuning.md",
+      "startLine": 1,
+      "endLine": 68,
+      "tokenCount": 145,
+      "content": "# Search Tuning Hybrid retrieval combines semantic search, keyword matching, and reciprocal rank fusion for better discovery.",
+      "embedding": [0.0, 0.0, 0.05, 0.96, 0.0, 0.0, 0.95, 0.1]
+    },
+    {
+      "id": "docs-config-reference",
+      "dataSourceId": "ds-docs",
+      "filePath": "docs/configuration-reference.md",
+      "startLine": 1,
+      "endLine": 70,
+      "tokenCount": 149,
+      "content": "# Configuration Reference Document the API endpoint override, debug logging, and environment-based settings for local installs.",
+      "embedding": [0.0, 0.0, 0.0, 0.15, 0.95, 0.0, 0.96, 0.0]
+    },
+    {
+      "id": "docs-cache-ops",
+      "dataSourceId": "ds-docs",
+      "filePath": "docs/cache-operations.md",
+      "startLine": 1,
+      "endLine": 64,
+      "tokenCount": 138,
+      "content": "# Cache Operations Warm repository caches before traffic, inspect stale entries, and clear warmup queues during incidents.",
+      "embedding": [0.0, 0.1, 0.92, 0.0, 0.1, 0.0, 0.94, 0.0]
+    },
+    {
+      "id": "workflow-deploy-preview",
+      "dataSourceId": "ds-platform",
+      "filePath": ".github/workflows/deploy-preview.yml",
+      "startLine": 1,
+      "endLine": 50,
+      "tokenCount": 118,
+      "content": "name: Deploy Preview on: pull_request jobs: preview: steps: - uses: acme/cache-restore - run: ./scripts/deploy-preview.sh",
+      "embedding": [0.05, 0.2, 0.15, 0.0, 0.72, 0.0, 0.25, 0.98]
+    },
+    {
+      "id": "workflow-release",
+      "dataSourceId": "ds-platform",
+      "filePath": ".github/workflows/release.yml",
+      "startLine": 1,
+      "endLine": 56,
+      "tokenCount": 130,
+      "content": "name: Release Extension on: push tags: - v* jobs: publish: steps: - uses: acme/publish-extension - run: ./scripts/package-vsix.sh",
+      "embedding": [0.0, 0.1, 0.0, 0.0, 0.82, 0.0, 0.18, 0.99]
+    },
+    {
+      "id": "workflow-nightly-sync",
+      "dataSourceId": "ds-platform",
+      "filePath": ".github/workflows/nightly-index-sync.yml",
+      "startLine": 1,
+      "endLine": 48,
+      "tokenCount": 112,
+      "content": "name: Nightly Index Sync on: schedule: - cron: '0 3 * * *' jobs: sync: steps: - run: ./scripts/sync-index.sh",
+      "embedding": [0.0, 0.05, 0.25, 0.55, 0.45, 0.0, 0.15, 0.97]
+    },
+    {
+      "id": "action-setup-yoink",
+      "dataSourceId": "ds-actions",
+      "filePath": "actions/setup-yoink/action.yml",
+      "startLine": 1,
+      "endLine": 46,
+      "tokenCount": 101,
+      "content": "name: Setup Yoink inputs: apiKey: required: true repoUrlInput: required: true outputs: configPath: description: Generated config path",
+      "embedding": [0.58, 0.0, 0.0, 0.0, 0.42, 0.0, 0.3, 0.97]
+    },
+    {
+      "id": "action-publish-extension",
+      "dataSourceId": "ds-actions",
+      "filePath": "actions/publish-extension/action.yml",
+      "startLine": 1,
+      "endLine": 44,
+      "tokenCount": 106,
+      "content": "name: Publish Extension inputs: vsixPath: required: true marketplaceToken: required: true runs: composite",
+      "embedding": [0.0, 0.05, 0.0, 0.0, 0.84, 0.0, 0.2, 0.99]
+    },
+    {
+      "id": "action-cache-restore",
+      "dataSourceId": "ds-actions",
+      "filePath": "actions/cache-restore/action.yml",
+      "startLine": 1,
+      "endLine": 42,
+      "tokenCount": 104,
+      "content": "name: Restore Build Cache inputs: CACHE_KEY_INPUT: required: true restorePathInput: required: true runs: composite",
+      "embedding": [0.0, 0.18, 0.82, 0.0, 0.1, 0.0, 0.18, 0.95]
+    }
+  ]
+}

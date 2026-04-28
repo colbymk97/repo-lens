@@ -1,0 +1,411 @@
+[
+  {
+    "id": "semantic-01",
+    "repository": null,
+    "query": "where do we turn a raw login token into a browser session",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.98, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/auth/sessionManager.ts", "grade": 3 },
+      { "repository": "acme/yoink-app", "filePath": "src/security/tokenVerifier.ts", "grade": 2 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-auth-session-1", "grade": 3 },
+      { "chunkId": "app-security-token", "grade": 2 }
+    ]
+  },
+  {
+    "id": "semantic-02",
+    "repository": null,
+    "query": "which code checks bearer tokens before requests are accepted",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.95, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/security/tokenVerifier.ts", "grade": 3 },
+      { "repository": "acme/yoink-app", "filePath": "src/auth/sessionManager.ts", "grade": 2 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-security-token", "grade": 3 },
+      { "chunkId": "app-auth-session-1", "grade": 2 }
+    ]
+  },
+  {
+    "id": "semantic-03",
+    "repository": "acme/yoink-app",
+    "query": "how do failed HTTP calls back off before retrying",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.05, 0.98, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/http/retryPolicy.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-http-retry", "grade": 3 }
+    ]
+  },
+  {
+    "id": "semantic-04",
+    "repository": null,
+    "query": "where do we prefill repository caches before traffic hits",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.02, 0.12, 0.97, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/cache/cacheWarmer.ts", "grade": 3 },
+      { "repository": "acme/yoink-docs", "filePath": "docs/cache-operations.md", "grade": 2 }
+    ]
+  },
+  {
+    "id": "semantic-05",
+    "repository": null,
+    "query": "what merges keyword matches with embedding hits",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.0, 0.0, 0.08, 0.98, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/search/queryPlanner.ts", "grade": 3 },
+      { "repository": "acme/yoink-docs", "filePath": "docs/search-tuning.md", "grade": 2 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-search-planner", "grade": 3 }
+    ]
+  },
+  {
+    "id": "semantic-06",
+    "repository": "acme/yoink-app",
+    "query": "where are environment overrides loaded for API access",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.0, 0.0, 0.0, 0.08, 0.98, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/config/envLoader.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "semantic-07",
+    "repository": "acme/yoink-app",
+    "query": "what computes the yearly customer charge",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.0, 0.0, 0.0, 0.0, 0.05, 0.98, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/billing/invoiceCalculator.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "semantic-08",
+    "repository": "acme/yoink-docs",
+    "query": "how do I connect a repository after GitHub auth",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.82, 0.05, 0.0, 0.0, 0.1, 0.0, 0.98, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/authentication-guide.md", "grade": 3 },
+      { "repository": "acme/yoink-actions", "filePath": "actions/setup-yoink/action.yml", "grade": 1 }
+    ]
+  },
+  {
+    "id": "semantic-09",
+    "repository": "acme/yoink-docs",
+    "query": "what document covers rollout and rollback steps",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.05, 0.2, 0.0, 0.0, 0.82, 0.0, 0.97, 0.2],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/deployment/runbook.md", "grade": 3 }
+    ]
+  },
+  {
+    "id": "semantic-10",
+    "repository": null,
+    "query": "which job refreshes the index on a schedule overnight",
+    "intent": "semantic-paraphrase",
+    "embedding": [0.0, 0.05, 0.22, 0.58, 0.42, 0.0, 0.1, 0.97],
+    "relevantFiles": [
+      { "repository": "acme/yoink-platform", "filePath": ".github/workflows/nightly-index-sync.yml", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-01",
+    "repository": "acme/yoink-app",
+    "query": "exchangeSessionCookie",
+    "intent": "identifier-exact",
+    "embedding": [0.95, 0.08, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/auth/sessionManager.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-auth-session-1", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-02",
+    "repository": "acme/yoink-app",
+    "query": "TOKEN_CLOCK_SKEW_MS",
+    "intent": "identifier-exact",
+    "embedding": [0.98, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/security/tokenVerifier.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-security-token", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-03",
+    "repository": "acme/yoink-app",
+    "query": "DEFAULT_BACKOFF_MS",
+    "intent": "identifier-exact",
+    "embedding": [0.05, 0.25, 0.0, 0.0, 0.78, 0.0, 0.95, 0.2],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/http/retryPolicy.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-http-retry", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-04",
+    "repository": "acme/yoink-app",
+    "query": "RRF_K",
+    "intent": "identifier-exact",
+    "embedding": [0.0, 0.0, 0.05, 0.96, 0.0, 0.0, 0.95, 0.1],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/search/queryPlanner.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-search-planner", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-05",
+    "repository": "acme/yoink-app",
+    "query": "PATH_WEIGHT",
+    "intent": "identifier-exact",
+    "embedding": [0.0, 0.0, 0.05, 0.96, 0.0, 0.0, 0.95, 0.1],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/search/queryPlanner.ts", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-search-planner", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-06",
+    "repository": null,
+    "query": "YOINK_API_BASE_URL",
+    "intent": "identifier-exact",
+    "embedding": [0.0, 0.0, 0.0, 0.15, 0.95, 0.0, 0.96, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/config/envLoader.ts", "grade": 3 },
+      { "repository": "acme/yoink-docs", "filePath": "docs/configuration-reference.md", "grade": 1 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "app-config-env", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-07",
+    "repository": "acme/yoink-actions",
+    "query": "marketplaceToken",
+    "intent": "identifier-exact",
+    "embedding": [0.0, 0.1, 0.0, 0.0, 0.82, 0.0, 0.18, 0.99],
+    "relevantFiles": [
+      { "repository": "acme/yoink-actions", "filePath": "actions/publish-extension/action.yml", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "action-publish-extension", "grade": 3 }
+    ]
+  },
+  {
+    "id": "identifier-08",
+    "repository": "acme/yoink-actions",
+    "query": "CACHE_KEY_INPUT",
+    "intent": "identifier-exact",
+    "embedding": [0.0, 0.1, 0.92, 0.0, 0.1, 0.0, 0.94, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-actions", "filePath": "actions/cache-restore/action.yml", "grade": 3 }
+    ],
+    "relevantChunks": [
+      { "chunkId": "action-cache-restore", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-01",
+    "repository": "acme/yoink-app",
+    "query": "session manager",
+    "intent": "path-structure",
+    "embedding": [0.96, 0.06, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/auth/sessionManager.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-02",
+    "repository": "acme/yoink-app",
+    "query": "token verifier",
+    "intent": "path-structure",
+    "embedding": [0.98, 0.04, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/security/tokenVerifier.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-03",
+    "repository": "acme/yoink-app",
+    "query": "query planner",
+    "intent": "path-structure",
+    "embedding": [0.0, 0.0, 0.05, 0.96, 0.0, 0.0, 0.95, 0.1],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/search/queryPlanner.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-04",
+    "repository": "acme/yoink-app",
+    "query": "env loader",
+    "intent": "path-structure",
+    "embedding": [0.0, 0.0, 0.0, 0.15, 0.95, 0.0, 0.96, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/config/envLoader.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-05",
+    "repository": null,
+    "query": "cache warmer",
+    "intent": "path-structure",
+    "embedding": [0.0, 0.1, 0.92, 0.0, 0.1, 0.0, 0.94, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/cache/cacheWarmer.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "path-06",
+    "repository": "acme/yoink-app",
+    "query": "invoice calculator",
+    "intent": "path-structure",
+    "embedding": [0.0, 0.0, 0.0, 0.0, 0.3, 0.75, 0.0, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-app", "filePath": "src/billing/invoiceCalculator.ts", "grade": 3 }
+    ]
+  },
+  {
+    "id": "docs-01",
+    "repository": "acme/yoink-docs",
+    "query": "how to add a repo after GitHub sign in",
+    "intent": "docs-howto",
+    "embedding": [0.84, 0.05, 0.0, 0.0, 0.1, 0.0, 0.98, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/authentication-guide.md", "grade": 3 }
+    ]
+  },
+  {
+    "id": "docs-02",
+    "repository": "acme/yoink-docs",
+    "query": "where is the rollback checklist documented",
+    "intent": "docs-howto",
+    "embedding": [0.05, 0.2, 0.0, 0.0, 0.8, 0.0, 0.97, 0.25],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/deployment/runbook.md", "grade": 3 }
+    ]
+  },
+  {
+    "id": "docs-03",
+    "repository": "acme/yoink-docs",
+    "query": "guide for tuning hybrid search",
+    "intent": "docs-howto",
+    "embedding": [0.0, 0.0, 0.05, 0.96, 0.0, 0.0, 0.95, 0.1],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/search-tuning.md", "grade": 3 },
+      { "repository": "acme/yoink-app", "filePath": "src/search/queryPlanner.ts", "grade": 1 }
+    ]
+  },
+  {
+    "id": "docs-04",
+    "repository": "acme/yoink-docs",
+    "query": "where are configuration settings documented",
+    "intent": "docs-howto",
+    "embedding": [0.0, 0.0, 0.0, 0.15, 0.95, 0.0, 0.96, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/configuration-reference.md", "grade": 3 }
+    ]
+  },
+  {
+    "id": "docs-05",
+    "repository": "acme/yoink-docs",
+    "query": "how do we warm caches before requests",
+    "intent": "docs-howto",
+    "embedding": [0.0, 0.1, 0.92, 0.0, 0.1, 0.0, 0.94, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/cache-operations.md", "grade": 3 },
+      { "repository": "acme/yoink-app", "filePath": "src/cache/cacheWarmer.ts", "grade": 1 }
+    ]
+  },
+  {
+    "id": "docs-06",
+    "repository": "acme/yoink-docs",
+    "query": "how do I point the app at a different API endpoint",
+    "intent": "docs-howto",
+    "embedding": [0.0, 0.0, 0.0, 0.15, 0.95, 0.0, 0.96, 0.0],
+    "relevantFiles": [
+      { "repository": "acme/yoink-docs", "filePath": "docs/configuration-reference.md", "grade": 3 },
+      { "repository": "acme/yoink-app", "filePath": "src/config/envLoader.ts", "grade": 2 }
+    ]
+  },
+  {
+    "id": "workflow-01",
+    "repository": "acme/yoink-platform",
+    "query": "preview deploy workflow",
+    "intent": "workflow-action",
+    "embedding": [0.05, 0.2, 0.15, 0.0, 0.72, 0.0, 0.25, 0.98],
+    "relevantFiles": [
+      { "repository": "acme/yoink-platform", "filePath": ".github/workflows/deploy-preview.yml", "grade": 3 }
+    ]
+  },
+  {
+    "id": "workflow-02",
+    "repository": "acme/yoink-platform",
+    "query": "tag release publish job",
+    "intent": "workflow-action",
+    "embedding": [0.0, 0.1, 0.0, 0.0, 0.82, 0.0, 0.18, 0.99],
+    "relevantFiles": [
+      { "repository": "acme/yoink-platform", "filePath": ".github/workflows/release.yml", "grade": 3 },
+      { "repository": "acme/yoink-actions", "filePath": "actions/publish-extension/action.yml", "grade": 1 }
+    ]
+  },
+  {
+    "id": "workflow-03",
+    "repository": null,
+    "query": "nightly sync workflow",
+    "intent": "workflow-action",
+    "embedding": [0.0, 0.05, 0.25, 0.55, 0.45, 0.0, 0.15, 0.97],
+    "relevantFiles": [
+      { "repository": "acme/yoink-platform", "filePath": ".github/workflows/nightly-index-sync.yml", "grade": 3 }
+    ]
+  },
+  {
+    "id": "workflow-04",
+    "repository": "acme/yoink-actions",
+    "query": "action that prepares yoink before other steps",
+    "intent": "workflow-action",
+    "embedding": [0.58, 0.0, 0.0, 0.0, 0.42, 0.0, 0.3, 0.97],
+    "relevantFiles": [
+      { "repository": "acme/yoink-actions", "filePath": "actions/setup-yoink/action.yml", "grade": 3 }
+    ]
+  },
+  {
+    "id": "workflow-05",
+    "repository": "acme/yoink-actions",
+    "query": "action that publishes the extension package",
+    "intent": "workflow-action",
+    "embedding": [0.0, 0.05, 0.0, 0.0, 0.84, 0.0, 0.2, 0.99],
+    "relevantFiles": [
+      { "repository": "acme/yoink-actions", "filePath": "actions/publish-extension/action.yml", "grade": 3 },
+      { "repository": "acme/yoink-platform", "filePath": ".github/workflows/release.yml", "grade": 1 }
+    ]
+  },
+  {
+    "id": "workflow-06",
+    "repository": "acme/yoink-actions",
+    "query": "action that restores build cache",
+    "intent": "workflow-action",
+    "embedding": [0.0, 0.18, 0.82, 0.0, 0.1, 0.0, 0.18, 0.95],
+    "relevantFiles": [
+      { "repository": "acme/yoink-actions", "filePath": "actions/cache-restore/action.yml", "grade": 3 }
+    ]
+  }
+]

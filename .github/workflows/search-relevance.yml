@@ -1,0 +1,106 @@
+name: Search Relevance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - '.github/workflows/search-relevance.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/retrieval/**'
+      - 'src/storage/**'
+      - 'src/embedding/**'
+      - 'test/eval/**'
+      - 'test/fixtures/search-eval/**'
+      - 'test/unit/retrieval/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/search-relevance.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/retrieval/**'
+      - 'src/storage/**'
+      - 'src/embedding/**'
+      - 'test/eval/**'
+      - 'test/fixtures/search-eval/**'
+      - 'test/unit/retrieval/**'
+
+jobs:
+  benchmark:
+    name: Search relevance benchmark
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run search relevance benchmark
+        run: npm run test:search-eval
+
+      - name: Upload search relevance artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-relevance-summary
+          path: test-results/search-relevance-summary.json
+          if-no-files-found: warn
+
+      - name: Add benchmark summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f test-results/search-relevance-summary.json ]; then
+            {
+              echo "## Search relevance benchmark"
+              echo
+              echo "No JSON summary artifact was produced."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          node <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          const summary = JSON.parse(fs.readFileSync('test-results/search-relevance-summary.json', 'utf8'));
+          const metrics = summary.modes.hybrid.overall;
+          const byIntent = summary.modes.hybrid.byIntent;
+
+          const fmt = (value) => Number(value).toFixed(3);
+
+          console.log('## Search relevance benchmark');
+          console.log('');
+          console.log(`Queries: ${summary.dataset.queryCount}`);
+          console.log(`Files: ${summary.dataset.fileCount}`);
+          console.log(`Chunks: ${summary.dataset.chunkCount}`);
+          console.log('');
+          console.log('### Hybrid overall');
+          console.log('');
+          console.log('| Metric | Value |');
+          console.log('| --- | ---: |');
+          console.log(`| Recall@1 | ${fmt(metrics.recallAt1)} |`);
+          console.log(`| Recall@3 | ${fmt(metrics.recallAt3)} |`);
+          console.log(`| Recall@5 | ${fmt(metrics.recallAt5)} |`);
+          console.log(`| Recall@10 | ${fmt(metrics.recallAt10)} |`);
+          console.log(`| MRR@10 | ${fmt(metrics.mrrAt10)} |`);
+          console.log(`| nDCG@10 | ${fmt(metrics.ndcgAt10)} |`);
+          console.log(`| Success@5 | ${fmt(metrics.successAt5)} |`);
+          console.log('');
+          console.log('### Hybrid by intent');
+          console.log('');
+          console.log('| Intent | R@1 | R@5 | MRR@10 | nDCG@10 | S@5 |');
+          console.log('| --- | ---: | ---: | ---: | ---: | ---: |');
+          for (const [intent, intentMetrics] of Object.entries(byIntent)) {
+            console.log(
+              `| ${intent} | ${fmt(intentMetrics.recallAt1)} | ${fmt(intentMetrics.recallAt5)} | ${fmt(intentMetrics.mrrAt10)} | ${fmt(intentMetrics.ndcgAt10)} | ${fmt(intentMetrics.successAt5)} |`,
+            );
+          }
+          EOF

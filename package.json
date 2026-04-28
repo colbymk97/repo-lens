@@ -480,6 +480,7 @@
     "compile": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
+    "test:search-eval": "vitest run test/eval/searchRelevance.test.ts",
     "coverage": "vitest run --coverage",
     "coverage:json": "vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text",
     "test:watch": "vitest",

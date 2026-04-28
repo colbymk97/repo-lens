@@ -53,7 +53,7 @@ describe('Retriever', () => {
   });
 
   afterEach(() => {
-    db.close();
+    db?.close();
   });
 
   it('returns ranked results for a query', async () => {
@@ -163,5 +163,38 @@ describe('Retriever', () => {
 
     const results = await retriever.search('authentication', ['ds-path'], provider, 10);
     expect(results[0].chunk.id).toBe('path-chunk');
+  });
+
+  it('supports vector-only mode', async () => {
+    const provider = makeProvider([[1, 0, 0, 0]]);
+    const results = await retriever.search('const', ['ds-1'], provider, 10, {
+      mode: 'vector-only',
+    });
+
+    expect(results[0].chunk.id).toBe('c1');
+  });
+
+  it('supports fts-only mode without embedding participation', async () => {
+    const provider = makeProvider([[0, 0, 0, 1]]);
+    const results = await retriever.search('Foo', [], provider, 10, {
+      mode: 'fts-only',
+    });
+
+    expect(results[0].chunk.id).toBe('c3');
+  });
+
+  it('can include per-result diagnostics for evaluation runs', async () => {
+    const provider = makeProvider([[1, 0, 0, 0]]);
+    const results = await retriever.search('add function', ['ds-1'], provider, 10, {
+      includeDiagnostics: true,
+    });
+
+    expect(results[0].diagnostics).toMatchObject({
+      mode: 'hybrid',
+      vectorRank: 1,
+      ftsRank: 1,
+    });
+    expect(results[0].diagnostics?.pathScore).toBeGreaterThanOrEqual(0);
+    expect(results[0].diagnostics?.finalScore).toBeGreaterThan(0);
   });
 });
