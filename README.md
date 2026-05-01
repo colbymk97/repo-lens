@@ -38,8 +38,8 @@ file is chunked appropriately.
 | `documentation`            | `**/*.md`, `**/*.mdx`, `docs/**`, `wiki/**`                            |
 | `source-code`              | TS/TSX, JS/JSX, Python, Go, Java, C#, Rust, Ruby — plus `.md`/`.mdx`   |
 | `github-actions-library`   | `action.yml` / `action.yaml` and `README.md` at any depth              |
-| `cicd-workflows`           | `.github/workflows/**`                                                 |
-| `openapi-specs`            | YAML/JSON spec files, `openapi/**`, `swagger/**`                       |
+| `cicd-workflows`           | `.github/workflows/**` plus `README.md` files                          |
+| `openapi-specs`            | YAML/JSON spec files, `openapi/**`, `swagger/**`, plus `README.md`     |
 
 ### Chunking
 
@@ -62,16 +62,28 @@ work without manual configuration.
 
 - VS Code 1.99+
 - GitHub Copilot Chat
-- An OpenAI API key (or compatible endpoint)
+- An embedding provider credential for your configured provider (OpenAI by default)
 
 ## Setup
 
 1. Install the extension (see [Installing Locally](#installing-locally) or grab a release VSIX from [Releases](https://github.com/colbymk97/yoink/releases))
-2. Run **Yoink: Set OpenAI API Key** from the command palette
+2. Run **Yoink: Set OpenAI API Key** or **Yoink: Set Azure OpenAI API Key** from the command palette, depending on your provider
 3. Open the Yoink sidebar and add a repository
 4. Wait for indexing to complete, then ask Copilot about it
 
 For unfamiliar repositories, start with `yoink-get-readme` to fetch the repo's primary README, or pass a `path` like `packages/core` to fetch the README for a specific package or subtree before searching more broadly.
+
+## Copilot Tools
+
+Yoink registers seven built-in tools with Copilot Chat:
+
+- `yoink-list` — list indexed repositories and their current status
+- `yoink-get-readme` — fetch the primary root README, or a path-scoped README for a package or subtree
+- `yoink-file-tree` — inspect the indexed directory hierarchy without guessing paths
+- `yoink-search` — hybrid semantic + keyword search across indexed content
+- `yoink-get-files` — fetch complete file contents, optionally scoped to a line range
+- `yoink-list-workflows` — enumerate indexed GitHub Actions workflow files
+- `yoink-list-actions` — enumerate indexed composite GitHub Actions
 
 ## Installing Locally
 
@@ -80,7 +92,7 @@ For unfamiliar repositories, start with `yoink-get-readme` to fetch the repo's p
 Download the `.vsix` file from the [Releases](https://github.com/colbymk97/yoink/releases) page, then:
 
 ```bash
-code --install-extension yoink-0.0.1.vsix
+code --install-extension yoink-<version>-<platform>.vsix
 ```
 
 Or via the VS Code UI: Extensions panel → `...` menu → **Install from VSIX...**
@@ -92,8 +104,8 @@ git clone https://github.com/colbymk97/yoink.git
 cd Lens
 npm install
 npm run build
-npm run package        # produces yoink-0.0.1.vsix in the project root
-code --install-extension yoink-0.0.1.vsix
+npm run package        # produces yoink-<version>.vsix in the project root
+code --install-extension yoink-<version>.vsix
 ```
 
 To uninstall:
@@ -141,6 +153,7 @@ To enable verbose logging, set `yoink.log.level` to `"debug"` in your VS Code se
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | Push to `main` / `claude/**`, any PR | Lint, test, build + package VSIX |
+| `managed-prerelease.yml` | Manual (`workflow_dispatch`) | Computes the next `-alpha.N` prerelease version, invokes the prerelease workflow, then persists the next prerelease version |
 | `prerelease.yml` | Manual (`workflow_dispatch`) | Creates tag, builds VSIX, publishes GitHub prerelease |
 | `release.yml` | Tag `v*` without hyphen (e.g. `v0.1.0`) | Validates tag/version match, builds VSIXs, creates the stable GitHub release, then publishes those same VSIXs to Visual Studio Marketplace |
 
@@ -154,7 +167,7 @@ Stable releases currently publish these platform-specific VSIXs:
 
 ### Publishing a prerelease
 
-Trigger the **Prerelease** workflow manually from the Actions tab — or via CLI:
+Trigger the **Managed Prerelease** workflow from the Actions tab if you want Yoink to compute the next `-alpha.N` version for you. To publish an explicit prerelease version, run **Prerelease** directly — or use the CLI:
 
 ```bash
 gh workflow run prerelease.yml --ref main -f version=0.1.0-alpha.1
