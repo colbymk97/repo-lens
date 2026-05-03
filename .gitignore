@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+test-results/
 *.vsix
 .vscode-test/
 .claude/settings.local.json
